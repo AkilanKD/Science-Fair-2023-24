@@ -1,6 +1,10 @@
 from time import perf_counter_ns, sleep
 from random import shuffle
 
+
+
+### CLASSES ###
+
 # Poker-playing AIs
 class AI:
     def __init__(self, strategy, game, preflop):
@@ -14,6 +18,67 @@ class AI:
     def __str__(self):
         return f"Strategy: {self.strategy},\nMoney: {self.money}"
     
+    # Evaluates the hand of the deck
+    def evaluate(self):
+        handScore = 0 # Score based on hand
+        flush = False # Whether there is a flush, or of the same suit
+        straight = False # Whether the cards are straight, or ranks in a row
+        highCard = 0 # Highest card available
+        totalHand = self.hand + self.game.commCards # Total cards available for player
+
+        # Ranks of all cards in totalHand
+        ranks = [x.rank for x in totalHand]
+        suits = [x.suit for x in totalHand]
+
+        #print(ranks)
+        # Sorts cards by numeric order
+        #ranks = sorted(ranks)
+
+        print([str(x) for x in totalHand])
+
+        # Number of cards per rank
+        rankNum = [ranks.count(x) for x in Card.cardRanks]
+
+        print(rankNum)
+
+        # Number of cards per suit
+        suitNum = [suits.count(x) for x in Card.cardSuits]
+
+        print(suitNum)
+
+        if 5 in suitNum:
+            flush = True
+
+        print(flush)
+
+        # How to do straight flush
+
+        if 4 in rankNum: # four of a kind
+            handScore = 400
+        elif 3 in rankNum:
+            if 2 in rankNum: # full house
+                handScore = 500
+            else: # three of a kind
+                handScore = 200
+        elif 2 in rankNum: # two of a kind
+            handScore = 100
+
+        if flush is True and handScore < 400: # flush
+            handScore = 400
+        elif straight is True and handScore < 300: # straight
+            handScore = 300
+
+        if flush is True and straight is True:
+            # Find a way to separate by suit
+            rankBySuit = []
+            handScore = 600
+            print("straight flush")
+
+        handScore += highCard
+        # Adds value of highest card in pair or flush to break ties
+
+        return handScore
+
     def decision(self):
         pass
 
@@ -52,12 +117,13 @@ class Card:
     def __str__(self):
         # Returns rank, then suit of card (ex: "Ace of Spades")
         return f"{self.rank} of {self.suit}"
-    
+
 
 # Deck of cards
 class Deck:   
     def __init__(self, game):
         self.game = game # Part of game
+        self.cards = [] # Deck of cards
         self.newDeck() # Creates new deck
         self.deal(2) # Deals cards
 
@@ -107,43 +173,26 @@ class Game:
     
     # Showdown between all players
     def showdown(self):
-        
-        xlist = []
-
-        
+        handsDict = {}
 
         for x in self.playerList:
-            flush = False # Whether there is a flush, or of the same suit
+            if x.evaluate() in handsDict:
+                handsDict[x.evaluate()].append(x)
+            else:
+                handsDict[x.evaluate()] = [x]
+        hands = list(handsDict.keys())
+        hands.sort(reverse=True)
 
-            straight = False # Whether the cards are straight, or ranks in a row
+        print(handsDict)
+        print(hands)
 
-            totalHand = x.hand + self.commCards # Total cards available for player
-            
-            # Ranks of all cards in totalHand
-            ranks = [y.rank for y in totalHand]
-            suits = [y.suit for y in totalHand]
-
-
-            #print(ranks)
-            # Sorts cards by numeric order
-            #ranks = sorted(ranks)
-
-            print([str(y) for y in totalHand])
-
-            # Number of cards per rank
-            rankNum = [ranks.count(y) for y in Card.cardRanks]
-
-            print(rankNum)
-
-            # Number of cards per suit
-            suitNum = [suits.count(y) for y in Card.cardSuits]
-
-            print(suitNum)
-
-            if 5 in suitNum:
-                flush = True
-
-            print(flush)
+        # handsDict[hands[0]] = list of AIs with the highest hand
+        if len(handsDict[hands[0]]) > 1:
+            print(1)
+        else:
+            handsDict[hands[0]][0].money += self.pot
+            self.pot = 0
+            print(2)
 
 
 
@@ -189,12 +238,13 @@ newGame.round = "River"
 # Shows river card
 newGame.deck.revealCards(1)
 
+# Showdown
 newGame.showdown()
-
+print([str(x) for x in newGame.playerList])
 
 # Deck
-print(str(newGame.deck))
-print(len(newGame.deck.cards))
+#print(str(newGame.deck))
+#print(len(newGame.deck.cards))
 
 # Community Cards
-print([str(x) for x in newGame.commCards])
+#print([str(x) for x in newGame.commCards])
