@@ -32,9 +32,7 @@ class AI:
         suits = [x.suit for x in totalHand]
 
         #print(ranks)
-        # Sorts cards by numeric order
-        #ranks = sorted(ranks)
-
+        
         print([str(x) for x in totalHand])
 
         # Number of cards per rank
