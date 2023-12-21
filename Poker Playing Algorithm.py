@@ -1,5 +1,6 @@
 from time import perf_counter_ns, sleep
 from random import shuffle
+from math import floor
 
 
 
@@ -187,6 +188,12 @@ class Game:
         print(hands)
 
         # handsDict[hands[0]] = list of AIs with the highest hand
+        for x in handsDict[hands[0]]:
+            x.money += floor(self.pot / len(handsDict[hands[0]]))
+        
+        # Adds the 
+        self.pot %= len(handsDict[hands[0]])
+
         if len(handsDict[hands[0]]) > 1:
             print(1)
         else:
