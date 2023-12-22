@@ -36,12 +36,12 @@ class AI:
         print([str(x) for x in total_hand])
 
         # Number of cards per rank
-        rank_num = [ranks.count(x) for x in Card.cardRanks]
+        rank_num = [ranks.count(x) for x in Card.CARD_RANKS]
 
         print(rank_num)
 
         # Number of cards per suit
-        suit_num = [suits.count(x) for x in Card.cardSuits]
+        suit_num = [suits.count(x) for x in Card.CARD_SUITS]
 
         print(suit_num)
 
@@ -104,10 +104,10 @@ class AI:
 class Card:
     # List of card ranks
     # Combines number cards (created with a range) with face cards
-    cardRanks = [str(x) for x in range(2, 11)] + ["Jack", "Queen", "King", "Ace"]
+    CARD_RANKS = [str(x) for x in range(2, 11)] + ["Jack", "Queen", "King", "Ace"]
 
     # List of card suits
-    cardSuits = ["Spades", "Hearts", "Clubs", "Diamonds"]
+    CARD_SUITS = ["Spades", "Hearts", "Clubs", "Diamonds"]
 
     def __init__(self, suit, rank):
         self.suit = suit # Card suit (spades, hearts, clubs, diamonds)
@@ -134,7 +134,7 @@ class Deck:
     def new_deck(self):
         # Adds Card objects to cards list with each suit and rank
         # Suit goes from 2 to 15 - cards with rank 11 and above are face cards
-        self.cards = [Card(x, y) for x in Card.cardSuits for y in Card.cardRanks]
+        self.cards = [Card(x, y) for x in Card.CARD_SUITS for y in Card.CARD_RANKS]
         # Shuffles cards in deck
         shuffle(self.cards)
 
