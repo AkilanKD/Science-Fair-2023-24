@@ -123,22 +123,22 @@ class Deck:
     def __init__(self, game):
         self.game = game # Part of game
         self.cards = [] # Deck of cards
-        self.newDeck() # Creates new deck
+        self.new_deck() # Creates new deck
         self.deal(2) # Deals cards
 
     # Lists all cards available in deck, separated by commas
     def __str__(self):
         return ", ".join([str(x) for x in self.cards])
 
-    # newDeck - creates full deck of cards
-    def newDeck(self):
+    # new_deck - creates full deck of cards
+    def new_deck(self):
         # Adds Card objects to cards list with each suit and rank
         # Suit goes from 2 to 15 - cards with rank 11 and above are face cards
         self.cards = [Card(x, y) for x in Card.cardSuits for y in Card.cardRanks]
         # Shuffles cards in deck
         shuffle(self.cards)
 
-    # newDeck - deals out cards to all AI players
+    # new_deck - deals out cards to all AI players
     # num - number of cards for each player
     def deal(self, num):
         # Repeats based on num
@@ -149,9 +149,9 @@ class Deck:
                 b.hand.append(self.cards[0])
                 self.cards.pop(0)
 
-    # revealCards - Reveals community cards
+    # reveal_cards - Reveals community cards
     # num - number of cards revealed
-    def revealCards(self, num):
+    def reveal_cards(self, num):
         # Adds all cards from deck with indices from 0 (start) to num to the comm_cards list
         self.game.comm_cards.extend(self.cards[0:num])
         # Removes top cards from the deck by setting cards to to a slice of items after index num
@@ -231,17 +231,17 @@ newGame.player_list[1].bet(4)
 # FLOP
 newGame.round = "Flop"
 # Shows flop cards
-newGame.deck.revealCards(3)
+newGame.deck.reveal_cards(3)
 
 # TURN
 newGame.round = "Turn"
 # Shows turn card
-newGame.deck.revealCards(1)
+newGame.deck.reveal_cards(1)
 
 # RIVER
 newGame.round = "River"
 # Shows river card
-newGame.deck.revealCards(1)
+newGame.deck.reveal_cards(1)
 
 # Showdown
 newGame.showdown()
