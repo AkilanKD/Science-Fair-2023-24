@@ -8,6 +8,7 @@ from math import floor
 
 # Poker-playing AIs
 class AI:
+    '''Poker-playing AIs'''
     def __init__(self, strategy, game, preflop):
         self.strategy = strategy # AI strategy name
         self.game = game # Game which the AI is in
@@ -15,15 +16,17 @@ class AI:
         self.hand = [] # Hand (cards held by the AI) - aka hole cards
         self.preflop = preflop # Preflop betting pct
 
-    # Lists strategy & money (ex: "Strategy: Tight Aggressive"),\nMoney: 100
     def __str__(self):
+        '''Lists strategy & money
+        Ex: "Strategy: Tight Aggressive",\nMoney: 100'''
         return f"Strategy: {self.strategy},\nMoney: {self.money}"
 
-    # Evaluates the hand of the deck
     def evaluate(self):
+        '''Evaluates the hand of the deck
+        Returns an integer which represents the hand and the highest card for tiebreakers'''
         hand_score = 0 # Score based on hand
         flush = False # Whether there is a flush, or of the same suit
-        straight = False # Whether the cards are straight, or ranks in a row
+        straight = False # Whether the cards are straight, or have ranks in a row
         high_card = 0 # Highest card available
         total_hand = self.hand + self.game.comm_cards # Total cards available for player
 
@@ -79,11 +82,12 @@ class AI:
         return hand_score
 
     def decision(self):
+        '''INCOMPLETE - Performs an action based on the result'''
         pass
 
-    # Sets a bet of a certain amount
-    # Amount - amount of money to bet
     def bet(self, amount):
+        '''Sets a bet of a certain amount
+        Amount - amount of money to bet'''
         # Lowers bet to max possible if bet is too high
         if self.money - amount < 0:
             amount = self.money
@@ -97,11 +101,12 @@ class AI:
             self.game.highest_bet = amount
 
     def fold(self):
+        '''Folds cards (leaving the game)'''
         pass
 
 
-# Individual cards
 class Card:
+    ''' Individual cards'''
     # List of card ranks
     # Combines number cards (created with a range) with face cards
     CARD_RANKS = [str(x) for x in range(2, 11)] + ["Jack", "Queen", "King", "Ace"]
@@ -114,33 +119,35 @@ class Card:
         self.rank = rank # Card rank (number/face) - set to string
 
     def __str__(self):
-        # Returns rank, then suit of card (ex: "Ace of Spades")
+        '''Returns rank, then suit of card (ex: "Ace of Spades")'''
         return f"{self.rank} of {self.suit}"
 
 
-# Deck of cards
 class Deck:
+    '''Deck of cards'''
     def __init__(self, game):
         self.game = game # Part of game
         self.cards = [] # Deck of cards
         self.new_deck() # Creates new deck
         self.deal(2) # Deals cards
 
-    # Lists all cards available in deck, separated by commas
     def __str__(self):
+        '''Lists all cards available in deck, separated by commas'''
         return ", ".join([str(x) for x in self.cards])
 
-    # new_deck - creates full deck of cards
     def new_deck(self):
+        ''' Creates full deck of cards'''
         # Adds Card objects to cards list with each suit and rank
         # Suit goes from 2 to 15 - cards with rank 11 and above are face cards
         self.cards = [Card(x, y) for x in Card.CARD_SUITS for y in Card.CARD_RANKS]
         # Shuffles cards in deck
         shuffle(self.cards)
 
-    # new_deck - deals out cards to all AI players
-    # num - number of cards for each player
     def deal(self, num):
+        '''Deals out cards to all AI players
+        
+        Parameter:
+        num - number of cards for each player'''
         # Repeats based on num
         # Gives every player a card first, then goes for the next round
         for a in range(num):
@@ -149,9 +156,11 @@ class Deck:
                 b.hand.append(self.cards[0])
                 self.cards.pop(0)
 
-    # reveal_cards - Reveals community cards
-    # num - number of cards revealed
     def reveal_cards(self, num):
+        '''Reveals community cards
+
+        Parameter:
+        num - number of cards revealed'''
         # Adds all cards from deck with indices from 0 (start) to num to the comm_cards list
         self.game.comm_cards.extend(self.cards[0:num])
         # Removes top cards from the deck by setting cards to to a slice of items after index num
@@ -160,6 +169,7 @@ class Deck:
 
 # Game
 class Game:
+    ''' Creates a game of Texas Holdem'''
     def __init__(self):
         self.ai_list = [AI("fdsa", self, x) for x in [0, 2, 4, 5]] # List of all AIs
         shuffle(self.ai_list) # Randomizes order of players
@@ -169,9 +179,22 @@ class Game:
         self.highest_bet = 0 # Highest bet put down
         self.deck = Deck(self) # Deck of cards
         self.round = "Preflop" # Round of game
+    
+    def __str__(self):
+        '''Returns round of game'''
+        return self.round
 
-    # Showdown between all players
+    def set_round(self, name, num):
+        '''Changes each round in Holdem
+        
+        Parameters:
+        name - name of the round
+        num - number of cards revealed in the round'''
+        self.round = name
+        self.deck.reveal_cards(num)
+
     def showdown(self):
+        '''Showdown between all players'''
         hands_dict = {}
 
         for x in self.player_list:
@@ -189,15 +212,8 @@ class Game:
         for x in hands_dict[hands[0]]:
             x.money += floor(self.pot / len(hands_dict[hands[0]]))
 
-        # Adds the 
+        # Sets the pot to the remaining money left
         self.pot %= len(hands_dict[hands[0]])
-
-        if len(hands_dict[hands[0]]) > 1:
-            print(1)
-        else:
-            hands_dict[hands[0]][0].money += self.pot
-            self.pot = 0
-            print(2)
 
 
 
@@ -228,20 +244,12 @@ newGame.player_list[0].bet(2)
 # Big blind
 newGame.player_list[1].bet(4)
 
-# FLOP
-newGame.round = "Flop"
-# Shows flop cards
-newGame.deck.reveal_cards(3)
-
-# TURN
-newGame.round = "Turn"
-# Shows turn card
-newGame.deck.reveal_cards(1)
-
-# RIVER
-newGame.round = "River"
-# Shows river card
-newGame.deck.reveal_cards(1)
+# Flop
+newGame.set_round("Flop", 3)
+# Turn
+newGame.set_round("Turn", 1)
+# River
+newGame.set_round("River", 1)
 
 # Showdown
 newGame.showdown()
