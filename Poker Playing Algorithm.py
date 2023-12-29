@@ -1,4 +1,5 @@
 from time import perf_counter_ns, sleep
+from re import findall
 from random import shuffle
 from math import floor
 
@@ -18,17 +19,21 @@ class AI:
 
     def __str__(self):
         '''Lists strategy & money
-        Ex: "Strategy: Tight Aggressive",\nMoney: 100'''
-        return f"Strategy: {self.strategy},\nMoney: {self.money}"
+        Ex: "Strategy: Tight Aggressive", Money: 100'''
+        return f"Strategy: {self.strategy}, Money: {self.money}"
 
     def evaluate(self):
         '''Evaluates the hand of the deck
         Returns an integer which represents the hand and the highest card for tiebreakers'''
+
         hand_score = 0 # Score based on hand
         flush = False # Whether there is a flush, or of the same suit
         straight = False # Whether the cards are straight, or have ranks in a row
         high_card = 0 # Highest card available
         total_hand = self.hand + self.game.comm_cards # Total cards available for player
+
+        # Test
+        # total_hand = [Card("Diamonds", "Ace"), Card("Diamonds", "2"), Card("Diamonds", "Queen"), Card("Diamonds", "Jack"), Card("Diamonds", "3"), Card("Diamonds", "9"), Card("Diamonds", "8")]
 
         # Ranks of all cards in total_hand
         ranks = [x.rank for x in total_hand]
@@ -48,32 +53,49 @@ class AI:
 
         print(suit_num)
 
-        if 5 in suit_num:
-            flush = True
+        # Checks if any suit has at least five cards
+        # Based off of code from Simeon Visser of Stack Overflow and manjeet_04 of GeeksForGeeks:
+        # https://stackoverflow.com/a/21054577
+        # https://www.geeksforgeeks.org/python-test-if-list-contains-elements-in-range/#
+        flush = any(x >= 5 and x <= 7 for x in suit_num)
 
         print(flush)
 
-        # How to do straight flush
+        # Checks for straight
+
+        # Creates string which combines numbers of rank_num together
+        combined_rank_num = "".join([str(x) for x in rank_num])
+        # Uses the RegEx function findall() to look for five instances of the characters one and
+        # five in a row, then checks the length of the list (0 means no items matched the condition)
+        if len(findall("[1-5]" * 5, combined_rank_num)) > 0:
+            straight = True
+
+        print(flush)
+        rank_num = rank_num.reverse()
 
         if 4 in rank_num: # four of a kind
-            hand_score = 400
+            hand_score = 600
+            high_card = 14 - rank_num.index(4)
         elif 3 in rank_num:
-            if 2 in rank_num: # full house
+            if any(x >= 2 for x in rank_num): # full house
                 hand_score = 500
             else: # three of a kind
                 hand_score = 200
+                high_card = 14 - rank_num.index(3)
         elif 2 in rank_num: # two of a kind
             hand_score = 100
-
+            high_card = 14 - rank_num.index(2)
         if flush is True and hand_score < 400: # flush
             hand_score = 400
         elif straight is True and hand_score < 300: # straight
             hand_score = 300
+        else:
+            high_card = 14 - rank_num.index(1)
 
         if flush is True and straight is True:
             # Find a way to separate by suit
             rank_by_suit = []
-            hand_score = 600
+            hand_score = 700
             print("straight flush")
 
         hand_score += high_card
@@ -86,8 +108,9 @@ class AI:
         pass
 
     def bet(self, amount):
-        '''Sets a bet of a certain amount
+        '''Bets a given amount of money by adding it to the pot
         Amount - amount of money to bet'''
+
         # Lowers bet to max possible if bet is too high
         if self.money - amount < 0:
             amount = self.money
@@ -101,7 +124,7 @@ class AI:
             self.game.highest_bet = amount
 
     def fold(self):
-        '''Folds cards (leaving the game)'''
+        '''INCOMPLETE - Folds cards (leaving the game)'''
         pass
 
 
@@ -140,7 +163,7 @@ class Deck:
         # Adds Card objects to cards list with each suit and rank
         # Suit goes from 2 to 15 - cards with rank 11 and above are face cards
         self.cards = [Card(x, y) for x in Card.CARD_SUITS for y in Card.CARD_RANKS]
-        # Shuffles cards in deck
+        # Shuffles cards in deck using the Random function shuffle()
         shuffle(self.cards)
 
     def deal(self, num):
@@ -179,7 +202,7 @@ class Game:
         self.highest_bet = 0 # Highest bet put down
         self.deck = Deck(self) # Deck of cards
         self.round = "Preflop" # Round of game
-    
+
     def __str__(self):
         '''Returns round of game'''
         return self.round
