@@ -33,7 +33,7 @@ class AI:
         total_hand = self.hand + self.game.comm_cards # Total cards available for player
 
         # Test
-        # total_hand = [Card("Diamonds", "Ace"), Card("Diamonds", "2"), Card("Diamonds", "Queen"), Card("Diamonds", "Jack"), Card("Diamonds", "3"), Card("Diamonds", "9"), Card("Diamonds", "8")]
+        #total_hand = [Card("Diamonds", "Ace"), Card("Diamonds", "2"), Card("Diamonds", "Queen"), Card("Diamonds", "Jack"), Card("Diamonds", "10"), Card("Diamonds", "9"), Card("Diamonds", "8")]
 
         # Ranks of all cards in total_hand
         ranks = [x.rank for x in total_hand]
@@ -65,19 +65,18 @@ class AI:
 
         # Creates string which combines numbers of rank_num together
         combined_rank_num = "".join([str(x) for x in rank_num])
-        # Uses the RegEx function findall() to look for five instances of the characters one and
+        # Uses the RegEx function findall() to look for five instances of the characters one to
         # five in a row, then checks the length of the list (0 means no items matched the condition)
-        if len(findall("[1-5]" * 5, combined_rank_num)) > 0:
+        if len(findall("[1-5]{5}", combined_rank_num)) > 0:
             straight = True
 
         print(flush)
-        rank_num = rank_num.reverse()
 
         if 4 in rank_num: # four of a kind
             hand_score = 600
             high_card = 14 - rank_num.index(4)
         elif 3 in rank_num:
-            if any(x >= 2 for x in rank_num): # full house
+            if any(x >= 2 for x in rank_num): # full house - needs fix
                 hand_score = 500
             else: # three of a kind
                 hand_score = 200
@@ -89,7 +88,7 @@ class AI:
             hand_score = 400
         elif straight is True and hand_score < 300: # straight
             hand_score = 300
-        else:
+        else: # high card 
             high_card = 14 - rank_num.index(1)
 
         if flush is True and straight is True:
@@ -125,14 +124,14 @@ class AI:
 
     def fold(self):
         '''INCOMPLETE - Folds cards (leaving the game)'''
-        pass
+        self.game.player_list.pop(self)
 
 
 class Card:
     ''' Individual cards'''
     # List of card ranks
-    # Combines number cards (created with a range) with face cards
-    CARD_RANKS = [str(x) for x in range(2, 11)] + ["Jack", "Queen", "King", "Ace"]
+    # Combines face cards with number cards (created with a range)
+    CARD_RANKS = ["Ace", "King", "Queen", "Jack"] + [str(x) for x in range(10, 1, -1)]
 
     # List of card suits
     CARD_SUITS = ["Spades", "Hearts", "Clubs", "Diamonds"]
@@ -215,6 +214,8 @@ class Game:
         num - number of cards revealed in the round'''
         self.round = name
         self.deck.reveal_cards(num)
+        for x in self.player_list:
+            x.decision()
 
     def showdown(self):
         '''Showdown between all players'''
@@ -226,17 +227,16 @@ class Game:
             else:
                 hands_dict[x.evaluate()] = [x]
         hands = list(hands_dict.keys())
-        hands.sort(reverse=True)
 
         print(hands_dict)
         print(hands)
 
-        # hands_dict[hands[0]] = list of AIs with the highest hand
-        for x in hands_dict[hands[0]]:
-            x.money += floor(self.pot / len(hands_dict[hands[0]]))
+        # hands_dict[max(hands)] = list of AIs with the highest hand
+        for x in hands_dict[max(hands)]:
+            x.money += floor(self.pot / len(hands_dict[max(hands)]))
 
         # Sets the pot to the remaining money left
-        self.pot %= len(hands_dict[hands[0]])
+        self.pot %= len(hands_dict[max(hands)])
 
 
 
@@ -263,10 +263,8 @@ print([str(x) for x in newGame.comm_cards])
 
 # Small blind
 newGame.player_list[0].bet(2)
-
 # Big blind
 newGame.player_list[1].bet(4)
-
 # Flop
 newGame.set_round("Flop", 3)
 # Turn
