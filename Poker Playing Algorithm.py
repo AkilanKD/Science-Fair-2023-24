@@ -1,8 +1,8 @@
 from time import perf_counter_ns, sleep
-from phevaluator import evaluate_cards
-from re import findall
 from random import shuffle
 from math import floor
+from phevaluator import evaluate_cards
+
 
 
 
@@ -25,81 +25,15 @@ class AI:
 
     def evaluate(self):
         '''Evaluates the hand of the deck
-        Returns an integer which represents the hand and the highest card for tiebreakers'''
+        Returns an integer which represents the hand value'''
 
-        hand_score = 0 # Score based on hand
-        flush = False # Whether there is a flush, or of the same suit
-        straight = False # Whether the cards are straight, or have ranks in a row
-        high_card = 0 # Highest card available
-        total_hand = self.hand + self.game.comm_cards # Total cards available for player
+        cards = self.hand + self.game.comm_cards # Total cards available for player
 
-        # Test
-        #total_hand = [Card("Diamonds", "Ace"), Card("Diamonds", "2"), Card("Diamonds", "Queen"), Card("Diamonds", "Jack"), Card("Diamonds", "10"), Card("Diamonds", "9"), Card("Diamonds", "8")]
+        # Converts cards into strings which can be inputted into evaluate_cards
+        cards = [f"{'T' if x.rank == '10' else x.rank[0]}{x.suit[0].lower()}" for x in cards]
 
-        # Ranks of all cards in total_hand
-        ranks = [x.rank for x in total_hand]
-        suits = [x.suit for x in total_hand]
-
-        #print(ranks)
-
-        print([str(x) for x in total_hand])
-
-        # Number of cards per rank
-        rank_num = [ranks.count(x) for x in Card.CARD_RANKS]
-
-        print(rank_num)
-
-        # Number of cards per suit
-        suit_num = [suits.count(x) for x in Card.CARD_SUITS]
-
-        print(suit_num)
-
-        # Checks if any suit has at least five cards
-        # Based off of code from Simeon Visser of Stack Overflow and manjeet_04 of GeeksForGeeks:
-        # https://stackoverflow.com/a/21054577
-        # https://www.geeksforgeeks.org/python-test-if-list-contains-elements-in-range/#
-        flush = any(x >= 5 and x <= 7 for x in suit_num)
-
-        print(flush)
-
-        # Checks for straight
-
-        # Creates string which combines numbers of rank_num together
-        combined_rank_num = "".join([str(x) for x in rank_num])
-        # Uses the RegEx function findall() to look for five instances of the characters one to
-        # five in a row, then checks the length of the list (0 means no items matched the condition)
-        if len(findall("[1-5]{5}", combined_rank_num)) > 0:
-            straight = True
-
-        print(flush)
-
-        if 4 in rank_num: # four of a kind
-            hand_score = 600
-            high_card = 14 - rank_num.index(4)
-        elif 3 in rank_num:
-            if any(x >= 2 for x in rank_num): # full house - needs fix
-                hand_score = 500
-            else: # three of a kind
-                hand_score = 200
-                high_card = 14 - rank_num.index(3)
-        elif 2 in rank_num: # two of a kind
-            hand_score = 100
-            high_card = 14 - rank_num.index(2)
-        if flush is True and hand_score < 400: # flush
-            hand_score = 400
-        elif straight is True and hand_score < 300: # straight
-            hand_score = 300
-        else: # high card 
-            high_card = 14 - rank_num.index(1)
-
-        if flush is True and straight is True:
-            # Find a way to separate by suit
-            rank_by_suit = []
-            hand_score = 700
-            print("straight flush")
-
-        hand_score += high_card
-        # Adds value of highest card in pair or flush to break ties
+        # Uses the evaluate_cards() function from PokerHandEvaluator
+        hand_score = evaluate_cards(cards[0], cards[1], cards[2], cards[3], cards[4], cards[5], cards[6])
 
         return hand_score
 
@@ -194,7 +128,7 @@ class Deck:
 class Game:
     ''' Creates a game of Texas Holdem'''
     def __init__(self):
-        self.ai_list = [AI("fdsa", self, x) for x in [0, 2, 4, 5]] # List of all AIs
+        self.ai_list = [AI("fdsa" + str(x), self, x) for x in [0, 2, 4, 5]] # List of all AIs
         shuffle(self.ai_list) # Randomizes order of players
         self.player_list = self.ai_list.copy() # List of AI playing (who did not fold)
         self.comm_cards = [] # Community cards
@@ -220,6 +154,7 @@ class Game:
 
     def showdown(self):
         '''Showdown between all players'''
+
         hands_dict = {}
 
         for x in self.player_list:
@@ -256,10 +191,10 @@ print([str(x) for x in newGame.player_list])
 print([[str(y) for y in x.hand] for x in newGame.player_list])
 
 # Deck
-print(str(newGame.deck))
+print(f"Deck: {str(newGame.deck)}")
 
 # Community Cards
-print([str(x) for x in newGame.comm_cards])
+print(f"Community cards: {[str(x) for x in newGame.comm_cards]}")
 
 
 # Small blind
