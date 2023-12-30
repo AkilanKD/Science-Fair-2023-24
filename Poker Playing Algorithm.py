@@ -1,6 +1,8 @@
 from time import perf_counter_ns, sleep
 from random import shuffle
 from math import floor
+# PokerHandEvaluator is copyrighted by Henry Lee (2016-2023) and was licensed under the Apache
+# License 2.0
 from phevaluator import evaluate_cards
 
 
