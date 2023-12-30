@@ -1,4 +1,5 @@
 from time import perf_counter_ns, sleep
+from phevaluator import evaluate_cards
 from re import findall
 from random import shuffle
 from math import floor
