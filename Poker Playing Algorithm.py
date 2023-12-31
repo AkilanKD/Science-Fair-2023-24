@@ -8,6 +8,7 @@ from phevaluator import evaluate_cards
 
 
 
+
 ### CLASSES ###
 
 # Poker-playing AIs
@@ -27,25 +28,27 @@ class AI:
 
     def evaluate(self):
         '''Evaluates the hand of the deck
-        Returns an integer which represents the hand value'''
+
+        Returns an integer which represents the value of the hand
+        Lower values represent better hands'''
 
         cards = self.hand + self.game.comm_cards # Total cards available for player
 
         # Converts cards into strings which can be inputted into evaluate_cards
         cards = [f"{'T' if x.rank == '10' else x.rank[0]}{x.suit[0].lower()}" for x in cards]
 
-        # Uses the evaluate_cards() function from PokerHandEvaluator
-        hand_score = evaluate_cards(cards[0], cards[1], cards[2], cards[3], cards[4], cards[5], cards[6])
-
-        return hand_score
+        # Uses the evaluate_cards() function from PokerHandEvaluator to return score for hand
+        return evaluate_cards(cards[0], cards[1], cards[2], cards[3], cards[4], cards[5], cards[6])
 
     def decision(self):
-        '''INCOMPLETE - Performs an action based on the result'''
+        '''INCOMPLETE - Performs an action based on hand, round, and other bets'''
         pass
 
     def bet(self, amount):
         '''Bets a given amount of money by adding it to the pot
-        Amount - amount of money to bet'''
+
+        Parameter:
+        amount - amount of money to bet'''
 
         # Lowers bet to max possible if bet is too high
         if self.money - amount < 0:
@@ -60,7 +63,7 @@ class AI:
             self.game.highest_bet = amount
 
     def fold(self):
-        '''INCOMPLETE - Folds cards (leaving the game)'''
+        '''Folds cards (leaving the game) by removing AI from player_list'''
         self.game.player_list.pop(self)
 
 
@@ -68,10 +71,10 @@ class Card:
     ''' Individual cards'''
     # List of card ranks
     # Combines face cards with number cards (created with a range)
-    CARD_RANKS = ["Ace", "King", "Queen", "Jack"] + [str(x) for x in range(10, 1, -1)]
+    CARD_RANKS = ("Ace", "King", "Queen", "Jack") + tuple(str(x) for x in range(10, 1, -1))
 
     # List of card suits
-    CARD_SUITS = ["Spades", "Hearts", "Clubs", "Diamonds"]
+    CARD_SUITS = ("Spades", "Hearts", "Clubs", "Diamonds")
 
     def __init__(self, suit, rank):
         self.suit = suit # Card suit (spades, hearts, clubs, diamonds)
@@ -88,7 +91,7 @@ class Deck:
         self.game = game # Part of game
         self.cards = [] # Deck of cards
         self.new_deck() # Creates new deck
-        self.deal(2) # Deals cards
+        self.deal() # Deals cards
 
     def __str__(self):
         '''Lists all cards available in deck, separated by commas'''
@@ -102,14 +105,11 @@ class Deck:
         # Shuffles cards in deck using the Random function shuffle()
         shuffle(self.cards)
 
-    def deal(self, num):
-        '''Deals out cards to all AI players
-        
-        Parameter:
-        num - number of cards for each player'''
+    def deal(self):
+        '''Deals out 2 cards to all AI players'''
         # Repeats based on num
         # Gives every player a card first, then goes for the next round
-        for a in range(num):
+        for a in range(2):
             # Gives each player the top card from the deck, then removes that card
             for b in self.game.ai_list:
                 b.hand.append(self.cards[0])
@@ -165,16 +165,14 @@ class Game:
             else:
                 hands_dict[x.evaluate()] = [x]
         hands = list(hands_dict.keys())
+        hands.sort()
 
-        print(hands_dict)
-        print(hands)
-
-        # hands_dict[max(hands)] = list of AIs with the highest hand
-        for x in hands_dict[max(hands)]:
-            x.money += floor(self.pot / len(hands_dict[max(hands)]))
+        # hands_dict[hands[0]] = list of AIs with the highest hand
+        for x in hands_dict[hands[0]]:
+            x.money += floor(self.pot / len(hands_dict[hands[0]]))
 
         # Sets the pot to the remaining money left
-        self.pot %= len(hands_dict[max(hands)])
+        self.pot %= len(hands_dict[hands[0]])
 
 
 
@@ -187,22 +185,23 @@ newGame = Game()
 
 
 # Players in game
-print([str(x) for x in newGame.player_list])
+print(f"\nPlayers: {[str(x) for x in newGame.player_list]}")
 
 # Cards of players
-print([[str(y) for y in x.hand] for x in newGame.player_list])
+print(f"\nPlayers' cards: {[str(x) + ': ' + str([str(y) for y in x.hand]) for x in newGame.player_list]}")
 
 # Deck
-print(f"Deck: {str(newGame.deck)}")
+#print(f"\nDeck: {str(newGame.deck)}")
 
-# Community Cards
-print(f"Community cards: {[str(x) for x in newGame.comm_cards]}")
-
-
+# Preflop
 # Small blind
 newGame.player_list[0].bet(2)
 # Big blind
 newGame.player_list[1].bet(4)
+
+for z in newGame.player_list[2:]:
+    z.decision()
+
 # Flop
 newGame.set_round("Flop", 3)
 # Turn
@@ -212,7 +211,12 @@ newGame.set_round("River", 1)
 
 # Showdown
 newGame.showdown()
-print([str(x) for x in newGame.player_list])
+
+# Community Cards
+print(f"\nCommunity cards: {[str(x) for x in newGame.comm_cards]}")
+
+# Players in game
+print(f"\nPlayers: {[str(x) for x in newGame.player_list]}")
 
 # Deck
 #print(str(newGame.deck))
