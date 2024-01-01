@@ -1,9 +1,17 @@
+### IMPORTS ###
 from time import perf_counter_ns, sleep
-from random import shuffle
+from csv import reader
 from math import floor
+from random import shuffle
 # PokerHandEvaluator is copyrighted by Henry Lee (2016-2023) and was licensed under the Apache
 # License 2.0
 from phevaluator import evaluate_cards
+hand_types = [] # Holds 2D array of all possible hands
+with open("HAND-TYPES.csv", "r") as csv_file: # Extracts data from csv
+    data_reader = reader(csv_file) # Extracts data from csv_file, separated by line
+    for row in data_reader:
+        # Adds each individual row to hand_types as its own list
+        hand_types.append(row)
 
 
 
@@ -20,11 +28,12 @@ class AI:
         self.money = 100 # Money on hand - Initially at 100
         self.hand = [] # Hand (cards held by the AI) - aka hole cards
         self.preflop = preflop # Preflop betting pct
+        self.position = 0 # Position of AI relative to the button
 
     def __str__(self):
         '''Lists strategy & money
         Ex: "Strategy: Tight Aggressive", Money: 100'''
-        return f"Strategy: {self.strategy}, Money: {self.money}"
+        return f"Strategy: {self.strategy}, Money: {self.money}, Position: {self.position}"
 
     def evaluate(self):
         '''Evaluates the hand of the deck
@@ -32,13 +41,33 @@ class AI:
         Returns an integer which represents the value of the hand
         Lower values represent better hands'''
 
-        cards = self.hand + self.game.comm_cards # Total cards available for player
-
+        # Total cards available for player
+        full_hand = self.hand + self.game.comm_cards
         # Converts cards into strings which can be inputted into evaluate_cards
-        cards = [f"{'T' if x.rank == '10' else x.rank[0]}{x.suit[0].lower()}" for x in cards]
-
+        full_hand = [f"{'T' if x.rank == '10' else x.rank[0]}{x.suit[0].lower()}" for x in full_hand]
         # Uses the evaluate_cards() function from PokerHandEvaluator to return score for hand
-        return evaluate_cards(cards[0], cards[1], cards[2], cards[3], cards[4], cards[5], cards[6])
+        return evaluate_cards(full_hand[0], full_hand[1], full_hand[2], full_hand[3], full_hand[4],
+                              full_hand[5], full_hand[6])
+
+    def choose_hand(self):
+        '''Chooses poker hand from array of poker hands (from CSV)
+        Returns the hand type which the AI has'''
+
+        # Sets ranks to all cards
+        ranks = [Card.CARD_RANKS.index(x.rank) for x in self.hand]
+        suits = [x.suit for x in self.hand]
+
+        if ranks[0] == ranks[1]:
+            # If two cards are the same rank
+            # Selects item from row & column of the first card's rank
+            # Does not matter whether first or second card
+            return hand_types[12-ranks[0]][12-ranks[0]]
+        elif suits[0] == suits[1]:
+            # If the cards have the same suit (suited)
+            return hand_types[12-max(ranks)][12-min(ranks)]
+        else:
+            # If the cards are of different suits (unsuited) but have different ranks
+            return hand_types[12-min(ranks)][12-max(ranks)]
 
     def decision(self):
         '''INCOMPLETE - Performs an action based on hand, round, and other bets'''
@@ -71,7 +100,7 @@ class Card:
     ''' Individual cards'''
     # List of card ranks
     # Combines face cards with number cards (created with a range)
-    CARD_RANKS = ("Ace", "King", "Queen", "Jack") + tuple(str(x) for x in range(10, 1, -1))
+    CARD_RANKS = tuple(str(x) for x in range(2, 11)) + ("Jack", "Queen", "King", "Ace")
 
     # List of card suits
     CARD_SUITS = ("Spades", "Hearts", "Clubs", "Diamonds")
@@ -133,6 +162,8 @@ class Game:
         self.ai_list = [AI("fdsa" + str(x), self, x) for x in [0, 2, 4, 5]] # List of all AIs
         shuffle(self.ai_list) # Randomizes order of players
         self.player_list = self.ai_list.copy() # List of AI playing (who did not fold)
+        for x in self.player_list:
+            x.position = self.ai_list.index(x)
         self.comm_cards = [] # Community cards
         self.pot = 0 # Pot (total amount bet by all players)
         self.highest_bet = 0 # Highest bet put down
@@ -185,10 +216,10 @@ newGame = Game()
 
 
 # Players in game
-print(f"\nPlayers: {[str(x) for x in newGame.player_list]}")
+print(f"\nPlayers: {[str(z) for z in newGame.player_list]}")
 
 # Cards of players
-print(f"\nPlayers' cards: {[str(x) + ': ' + str([str(y) for y in x.hand]) for x in newGame.player_list]}")
+print(f"\nPlayers' cards: {[str(z) + ': ' + str([str(z2) for z2 in z.hand]) for z in newGame.player_list]}")
 
 # Deck
 #print(f"\nDeck: {str(newGame.deck)}")
@@ -213,14 +244,14 @@ newGame.set_round("River", 1)
 newGame.showdown()
 
 # Community Cards
-print(f"\nCommunity cards: {[str(x) for x in newGame.comm_cards]}")
+print(f"\nCommunity cards: {[str(z) for z in newGame.comm_cards]}")
 
 # Players in game
-print(f"\nPlayers: {[str(x) for x in newGame.player_list]}")
+print(f"\nPlayers: {[str(z) for z in newGame.player_list]}")
 
 # Deck
 #print(str(newGame.deck))
 #print(len(newGame.deck.cards))
 
 # Community Cards
-#print([str(x) for x in newGame.comm_cards])
+#print([str(z) for z in newGame.comm_cards])
