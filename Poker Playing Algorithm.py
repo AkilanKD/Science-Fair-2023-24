@@ -1,17 +1,23 @@
 ### IMPORTS ###
-from time import perf_counter_ns, sleep
+from time import perf_counter_ns
 from csv import reader
 from math import floor
 from random import shuffle
 # PokerHandEvaluator is copyrighted by Henry Lee (2016-2023) and was licensed under the Apache
 # License 2.0
 from phevaluator import evaluate_cards
-hand_types = [] # Holds 2D array of all possible hands
-with open("HAND-TYPES.csv", "r") as csv_file: # Extracts data from csv
+HAND_TYPES = [] # Holds 2D array of all possible hands
+with open("HAND-TYPES.csv", "r", encoding="utf-8") as csv_file: # Extracts data from csv
     data_reader = reader(csv_file) # Extracts data from csv_file, separated by line
     for row in data_reader:
-        # Adds each individual row to hand_types as its own list
-        hand_types.append(row)
+        # Adds each individual row to HAND_TYPES as its own list
+        HAND_TYPES.append(row)
+# List of card ranks
+# Combines face cards with number cards (created with a range)
+CARD_RANKS = tuple(str(x) for x in range(2, 11)) + ("Jack", "Queen", "King", "Ace")
+
+# List of card suits
+CARD_SUITS = ("Spades", "Hearts", "Clubs", "Diamonds")
 
 
 
@@ -26,7 +32,7 @@ class AI:
         self.strategy = strategy # AI strategy name
         self.game = game # Game which the AI is in
         self.money = 100 # Money on hand - Initially at 100
-        self.hand = [] # Hand (cards held by the AI) - aka hole cards
+        self.hole = [] # Hand (cards held by the AI) - aka hole cards
         self.preflop = preflop # Preflop betting pct
         self.position = 0 # Position of AI relative to the button
 
@@ -42,32 +48,31 @@ class AI:
         Lower values represent better hands'''
 
         # Total cards available for player
-        full_hand = self.hand + self.game.comm_cards
+        hand = self.hole + self.game.comm_cards
         # Converts cards into strings which can be inputted into evaluate_cards
-        full_hand = [f"{'T' if x.rank == '10' else x.rank[0]}{x.suit[0].lower()}" for x in full_hand]
+        hand = [f"{'T' if x.rank == '10' else x.rank[0]}{x.suit[0].lower()}" for x in hand]
         # Uses the evaluate_cards() function from PokerHandEvaluator to return score for hand
-        return evaluate_cards(full_hand[0], full_hand[1], full_hand[2], full_hand[3], full_hand[4],
-                              full_hand[5], full_hand[6])
+        return evaluate_cards(hand[0], hand[1], hand[2], hand[3], hand[4], hand[5], hand[6])
 
     def choose_hand(self):
         '''Chooses poker hand from array of poker hands (from CSV)
         Returns the hand type which the AI has'''
 
         # Sets ranks to all cards
-        ranks = [Card.CARD_RANKS.index(x.rank) for x in self.hand]
-        suits = [x.suit for x in self.hand]
+        ranks = [CARD_RANKS.index(x.rank) for x in self.hole]
+        suits = [x.suit for x in self.hole]
 
         if ranks[0] == ranks[1]:
             # If two cards are the same rank
             # Selects item from row & column of the first card's rank
             # Does not matter whether first or second card
-            return hand_types[12-ranks[0]][12-ranks[0]]
+            return HAND_TYPES[12-ranks[0]][12-ranks[0]]
         elif suits[0] == suits[1]:
             # If the cards have the same suit (suited)
-            return hand_types[12-max(ranks)][12-min(ranks)]
+            return HAND_TYPES[12-max(ranks)][12-min(ranks)]
         else:
             # If the cards are of different suits (unsuited) but have different ranks
-            return hand_types[12-min(ranks)][12-max(ranks)]
+            return HAND_TYPES[12-min(ranks)][12-max(ranks)]
 
     def decision(self):
         '''INCOMPLETE - Performs an action based on hand, round, and other bets'''
@@ -98,12 +103,6 @@ class AI:
 
 class Card:
     ''' Individual cards'''
-    # List of card ranks
-    # Combines face cards with number cards (created with a range)
-    CARD_RANKS = tuple(str(x) for x in range(2, 11)) + ("Jack", "Queen", "King", "Ace")
-
-    # List of card suits
-    CARD_SUITS = ("Spades", "Hearts", "Clubs", "Diamonds")
 
     def __init__(self, suit, rank):
         self.suit = suit # Card suit (spades, hearts, clubs, diamonds)
@@ -130,7 +129,7 @@ class Deck:
         ''' Creates full deck of cards'''
         # Adds Card objects to cards list with each suit and rank
         # Suit goes from 2 to 15 - cards with rank 11 and above are face cards
-        self.cards = [Card(x, y) for x in Card.CARD_SUITS for y in Card.CARD_RANKS]
+        self.cards = [Card(x, y) for x in CARD_SUITS for y in CARD_RANKS]
         # Shuffles cards in deck using the Random function shuffle()
         shuffle(self.cards)
 
@@ -141,7 +140,7 @@ class Deck:
         for a in range(2):
             # Gives each player the top card from the deck, then removes that card
             for b in self.game.ai_list:
-                b.hand.append(self.cards[0])
+                b.hole.append(self.cards[0])
                 self.cards.pop(0)
 
     def reveal_cards(self, num):
@@ -216,10 +215,10 @@ newGame = Game()
 
 
 # Players in game
-print(f"\nPlayers: {[str(z) for z in newGame.player_list]}")
+#print(f"\nPlayers: {[str(z) for z in newGame.player_list]}")
 
 # Cards of players
-print(f"\nPlayers' cards: {[str(z) + ': ' + str([str(z2) for z2 in z.hand]) for z in newGame.player_list]}")
+#print(f"\nPlayers' cards: {[str(z) + ': ' + str([str(z2) for z2 in z.hole]) for z in newGame.player_list]}")
 
 # Deck
 #print(f"\nDeck: {str(newGame.deck)}")
@@ -244,10 +243,10 @@ newGame.set_round("River", 1)
 newGame.showdown()
 
 # Community Cards
-print(f"\nCommunity cards: {[str(z) for z in newGame.comm_cards]}")
+#print(f"\nCommunity cards: {[str(z) for z in newGame.comm_cards]}")
 
 # Players in game
-print(f"\nPlayers: {[str(z) for z in newGame.player_list]}")
+#print(f"\nPlayers: {[str(z) for z in newGame.player_list]}")
 
 # Deck
 #print(str(newGame.deck))
