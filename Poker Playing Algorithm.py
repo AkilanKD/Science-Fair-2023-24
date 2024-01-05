@@ -14,7 +14,7 @@ with open("HAND-TYPES.csv", "r", encoding="utf-8") as csv_file: # Extracts data 
         HAND_TYPES.append(row)
 # List of card ranks
 # Combines face cards with number cards (created with a range)
-CARD_RANKS = tuple(str(x) for x in range(2, 11)) + ("Jack", "Queen", "King", "Ace")
+CARD_RANKS = tuple(str(card) for card in range(2, 11)) + ("Jack", "Queen", "King", "Ace")
 
 # List of card suits
 CARD_SUITS = ("Spades", "Hearts", "Clubs", "Diamonds")
@@ -50,17 +50,17 @@ class AI:
         # Total cards available for player
         hand = self.hole + self.game.comm_cards
         # Converts cards into strings which can be inputted into evaluate_cards
-        hand = [f"{'T' if x.rank == '10' else x.rank[0]}{x.suit[0].lower()}" for x in hand]
+        hand = [f"{'T' if c.rank == '10' else c.rank[0]}{c.suit[0].lower()}" for c in hand]
         # Uses the evaluate_cards() function from PokerHandEvaluator to return score for hand
         return evaluate_cards(hand[0], hand[1], hand[2], hand[3], hand[4], hand[5], hand[6])
 
     def choose_hand(self):
-        '''Chooses poker hand from array of poker hands (from CSV)
+        '''TO BE REPLACED - Chooses poker hand from array of poker hands (from CSV) based on AI hand
         Returns the hand type which the AI has'''
 
         # Sets ranks to all cards
-        ranks = [CARD_RANKS.index(x.rank) for x in self.hole]
-        suits = [x.suit for x in self.hole]
+        ranks = [CARD_RANKS.index(card.rank) for card in self.hole]
+        suits = [card.suit for card in self.hole]
 
         if ranks[0] == ranks[1]:
             # If two cards are the same rank
@@ -76,7 +76,21 @@ class AI:
 
     def decision(self):
         '''INCOMPLETE - Performs an action based on hand, round, and other bets'''
-        pass
+        if self.game.round == "Preflop":
+            hand_position = self.choose_hand() # Finds position of hands
+
+            # Increases position available
+            if self.preflop == "Loose":
+                hand_position -= 1
+
+            # 
+            if hand_position != "N" and hand_position >= self.position:
+                pass
+            else:
+                self.fold()
+
+        else:
+            pass
 
     def bet(self, amount):
         '''Bets a given amount of money by adding it to the pot
@@ -123,13 +137,13 @@ class Deck:
 
     def __str__(self):
         '''Lists all cards available in deck, separated by commas'''
-        return ", ".join([str(x) for x in self.cards])
+        return ", ".join([str(card) for card in self.cards])
 
     def new_deck(self):
         ''' Creates full deck of cards'''
         # Adds Card objects to cards list with each suit and rank
         # Suit goes from 2 to 15 - cards with rank 11 and above are face cards
-        self.cards = [Card(x, y) for x in CARD_SUITS for y in CARD_RANKS]
+        self.cards = [Card(suit, rank) for suit in CARD_SUITS for rank in CARD_RANKS]
         # Shuffles cards in deck using the Random function shuffle()
         shuffle(self.cards)
 
@@ -137,10 +151,10 @@ class Deck:
         '''Deals out 2 cards to all AI players'''
         # Repeats based on num
         # Gives every player a card first, then goes for the next round
-        for a in range(2):
+        for x in range(2):
             # Gives each player the top card from the deck, then removes that card
-            for b in self.game.ai_list:
-                b.hole.append(self.cards[0])
+            for ai in self.game.ai_list:
+                ai.hole.append(self.cards[0])
                 self.cards.pop(0)
 
     def reveal_cards(self, num):
@@ -161,8 +175,8 @@ class Game:
         self.ai_list = [AI("fdsa" + str(x), self, x) for x in [0, 2, 4, 5]] # List of all AIs
         shuffle(self.ai_list) # Randomizes order of players
         self.player_list = self.ai_list.copy() # List of AI playing (who did not fold)
-        for x in self.player_list:
-            x.position = self.ai_list.index(x)
+        for ai in self.player_list:
+            ai.position = self.ai_list.index(ai)
         self.comm_cards = [] # Community cards
         self.pot = 0 # Pot (total amount bet by all players)
         self.highest_bet = 0 # Highest bet put down
@@ -181,25 +195,25 @@ class Game:
         num - number of cards revealed in the round'''
         self.round = name
         self.deck.reveal_cards(num)
-        for x in self.player_list:
-            x.decision()
+        for ai in self.player_list:
+            ai.decision()
 
     def showdown(self):
         '''Showdown between all players'''
 
         hands_dict = {}
 
-        for x in self.player_list:
-            if x.evaluate() in hands_dict:
-                hands_dict[x.evaluate()].append(x)
+        for ai in self.player_list:
+            if ai.evaluate() in hands_dict:
+                hands_dict[ai.evaluate()].append(ai)
             else:
-                hands_dict[x.evaluate()] = [x]
+                hands_dict[ai.evaluate()] = [ai]
         hands = list(hands_dict.keys())
         hands.sort()
 
         # hands_dict[hands[0]] = list of AIs with the highest hand
-        for x in hands_dict[hands[0]]:
-            x.money += floor(self.pot / len(hands_dict[hands[0]]))
+        for ai in hands_dict[hands[0]]:
+            ai.money += floor(self.pot / len(hands_dict[hands[0]]))
 
         # Sets the pot to the remaining money left
         self.pot %= len(hands_dict[hands[0]])
