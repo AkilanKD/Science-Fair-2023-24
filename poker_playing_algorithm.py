@@ -1,5 +1,5 @@
 ### IMPORTS ###
-from time import perf_counter_ns
+from time import perf_counter_ns, sleep
 from csv import reader
 from math import floor
 from random import shuffle
@@ -33,7 +33,8 @@ class AI:
         self.game = game # Game which the AI is in
         self.money = 100 # Money on hand - Initially at 100
         self.hole = [] # Hand (cards held by the AI) - aka hole cards
-        self.preflop = preflop # Preflop betting pct
+        self.preflop = preflop # Preflop hand range
+        self.aggression = "" # Aggressiveness of preflop bets
         self.position = 0 # Position of AI relative to the button
 
     def __str__(self):
@@ -80,16 +81,20 @@ class AI:
             hand_position = self.choose_hand() # Finds position of hands
 
             # Increases position available
-            if self.preflop == "Loose":
+            if self.preflop == "Loose" and hand_position != "N":
                 hand_position -= 1
 
             # 
-            if hand_position != "N" and hand_position >= self.position:
-                pass
+            if hand_position == "N" or hand_position < self.position:
+                if self.aggression == "":
+                    pass
+                else:
+                    pass
             else:
                 self.fold()
 
         else:
+            # Use GTO
             pass
 
     def bet(self, amount):
