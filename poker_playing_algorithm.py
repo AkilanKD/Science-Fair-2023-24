@@ -6,6 +6,7 @@ from random import shuffle
 # PokerHandEvaluator is copyrighted by Henry Lee (2016-2023) and was licensed under the Apache
 # License 2.0
 from phevaluator import evaluate_cards
+# from pied_poker import Player, Card, 
 HAND_TYPES = [] # Holds 2D array of all possible hands
 with open("HAND-TYPES.csv", "r", encoding="utf-8") as csv_file: # Extracts data from csv
     data_reader = reader(csv_file) # Extracts data from csv_file, separated by line
@@ -28,13 +29,13 @@ CARD_SUITS = ("Spades", "Hearts", "Clubs", "Diamonds")
 # Poker-playing AIs
 class AI:
     '''Poker-playing AIs'''
-    def __init__(self, strategy, game, preflop):
+    def __init__(self, strategy, game, preflop, aggression):
         self.strategy = strategy # AI strategy name
         self.game = game # Game which the AI is in
         self.money = 100 # Money on hand - Initially at 100
         self.hole = [] # Hand (cards held by the AI) - aka hole cards
-        self.preflop = preflop # Preflop hand range
-        self.aggression = "" # Aggressiveness of preflop bets
+        self.preflop = preflop # Preflop hand range (0 = tight, 0.5 = loose, 1 = very loose)
+        self.aggression = aggression # Aggressiveness of preflop bets
         self.position = 0 # Position of AI relative to the button
 
     def __str__(self):
@@ -78,20 +79,20 @@ class AI:
     def decision(self):
         '''INCOMPLETE - Performs an action based on hand, round, and other bets'''
         if self.game.round == "Preflop":
-            hand_position = self.choose_hand() # Finds position of hands
+            hand_position = self.choose_hand() # Finds positions available for hand
 
-            # Increases position available
-            if self.preflop == "Loose" and hand_position != "N":
-                hand_position -= 1
+            # Increases position that the hand is used depending on aggression
+            if hand_position != "N":
+                hand_position -= self.preflop
 
-            # 
             if hand_position == "N" or hand_position < self.position:
+                # Folds if the hand is not good for the position or even good at all
+                self.fold()
+            else:
                 if self.aggression == "":
                     pass
                 else:
                     pass
-            else:
-                self.fold()
 
         else:
             # Use GTO
@@ -177,11 +178,14 @@ class Deck:
 class Game:
     ''' Creates a game of Texas Holdem'''
     def __init__(self):
-        self.ai_list = [AI("fdsa" + str(x), self, x) for x in [0, 2, 4, 5]] # List of all AIs
+        self.ai_list = [AI("fdsa" + str(x), self, 0, 0) for x in [0, 2, 4, 5]] # List of all AIs
         shuffle(self.ai_list) # Randomizes order of players
         self.player_list = self.ai_list.copy() # List of AI playing (who did not fold)
         for ai in self.player_list:
-            ai.position = self.ai_list.index(ai)
+            if self.ai_list.index(ai) > 4:
+                ai.position = self.ai_list.index(ai) + 5
+            else:
+                ai.position = self.ai_list.index(ai) - 3
         self.comm_cards = [] # Community cards
         self.pot = 0 # Pot (total amount bet by all players)
         self.highest_bet = 0 # Highest bet put down
