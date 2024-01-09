@@ -6,13 +6,13 @@ from random import shuffle
 # PokerHandEvaluator is copyrighted by Henry Lee (2016-2023) and was licensed under the Apache
 # License 2.0
 from phevaluator import evaluate_cards
-# from pied_poker import Player, Card, 
-HAND_TYPES = [] # Holds 2D array of all possible hands
-with open("HAND-TYPES.csv", "r", encoding="utf-8") as csv_file: # Extracts data from csv
+import pied_poker as p
+PREFLOP_RANGES = [] # Holds 2D array of all possible hands
+with open("PREFLOP_RANGES.csv", "r", encoding="utf-8") as csv_file: # Extracts data from csv
     data_reader = reader(csv_file) # Extracts data from csv_file, separated by line
     for row in data_reader:
-        # Adds each individual row to HAND_TYPES as its own list
-        HAND_TYPES.append(row)
+        # Adds each individual row to PREFLOP_RANGES as its own list
+        PREFLOP_RANGES.append(row)
 # List of card ranks
 # Combines face cards with number cards (created with a range)
 CARD_RANKS = tuple(str(card) for card in range(2, 11)) + ("Jack", "Queen", "King", "Ace")
@@ -36,7 +36,7 @@ class AI:
         self.hole = [] # Hand (cards held by the AI) - aka hole cards
         self.preflop = preflop # Preflop hand range (0 = tight, 0.5 = loose, 1 = very loose)
         self.aggression = aggression # Aggressiveness of preflop bets
-        self.position = 0 # Position of AI relative to the button
+        self.position = 0 # Position of AI relative to the big blind
 
     def __str__(self):
         '''Lists strategy & money
@@ -68,17 +68,17 @@ class AI:
             # If two cards are the same rank
             # Selects item from row & column of the first card's rank
             # Does not matter whether first or second card
-            return HAND_TYPES[12-ranks[0]][12-ranks[0]]
+            return PREFLOP_RANGES[12-ranks[0]][12-ranks[0]]
         elif suits[0] == suits[1]:
             # If the cards have the same suit (suited)
-            return HAND_TYPES[12-max(ranks)][12-min(ranks)]
+            return PREFLOP_RANGES[12-max(ranks)][12-min(ranks)]
         else:
             # If the cards are of different suits (unsuited) but have different ranks
-            return HAND_TYPES[12-min(ranks)][12-max(ranks)]
+            return PREFLOP_RANGES[12-min(ranks)][12-max(ranks)]
 
     def decision(self):
         '''INCOMPLETE - Performs an action based on hand, round, and other bets'''
-        if self.game.round == "Preflop":
+        if self.game.round == "Preflop" or (self.game.round == "Flop" and self.position > 5):
             hand_position = self.choose_hand() # Finds positions available for hand
 
             # Increases position that the hand is used depending on aggression
@@ -86,7 +86,7 @@ class AI:
                 hand_position -= self.preflop
 
             if hand_position == "N" or hand_position < self.position:
-                # Folds if the hand is not good for the position or even good at all
+                # Folds if the hand is not good for the position
                 self.fold()
             else:
                 if self.aggression == "":
@@ -96,7 +96,7 @@ class AI:
 
         else:
             # Use GTO
-            pass
+            players_list = [p.Player(str(item)) for item in self.game.player_list]
 
     def bet(self, amount):
         '''Bets a given amount of money by adding it to the pot
@@ -157,7 +157,7 @@ class Deck:
         '''Deals out 2 cards to all AI players'''
         # Repeats based on num
         # Gives every player a card first, then goes for the next round
-        for x in range(2):
+        for round in range(2):
             # Gives each player the top card from the deck, then removes that card
             for ai in self.game.ai_list:
                 ai.hole.append(self.cards[0])
