@@ -12,7 +12,7 @@ with open("PREFLOP_RANGES.csv", "r", encoding="utf-8") as csv_file: # Extracts d
     data_reader = reader(csv_file) # Extracts data from csv_file, separated by line
     for row in data_reader:
         # Adds each individual row to PREFLOP_RANGES as its own list
-        PREFLOP_RANGES.append(row)
+        PREFLOP_RANGES.append([int(item) if item != "N" else item for item in row])
 # List of card ranks
 # Combines face cards with number cards (created with a range)
 CARD_RANKS = tuple(str(card) for card in range(2, 11)) + ("Jack", "Queen", "King", "Ace")
@@ -20,7 +20,9 @@ CARD_RANKS = tuple(str(card) for card in range(2, 11)) + ("Jack", "Queen", "King
 # List of card suits
 CARD_SUITS = ("Spades", "Hearts", "Clubs", "Diamonds")
 
+print("Finished import")
 
+full_start = perf_counter_ns()
 
 
 
@@ -41,7 +43,7 @@ class AI:
     def __str__(self):
         '''Lists strategy & money
         Ex: "Strategy: Tight Aggressive", Money: 100'''
-        return f"Strategy: {self.strategy}, Money: {self.money}, Position: {self.position}"
+        return f"Strategy: {self.strategy}, Money: {self.money}, Position: {self.position}, Cards: {[str(card) for card in self.hole]}"
 
     def evaluate(self):
         '''Evaluates the hand of the deck
@@ -76,27 +78,61 @@ class AI:
             # If the cards are of different suits (unsuited) but have different ranks
             return PREFLOP_RANGES[12-min(ranks)][12-max(ranks)]
 
-    def decision(self):
-        '''INCOMPLETE - Performs an action based on hand, round, and other bets'''
-        if self.game.round == "Preflop" or (self.game.round == "Flop" and self.position > 5):
-            hand_position = self.choose_hand() # Finds positions available for hand
+    def preflop_decision(self):
+        '''INCOMPLETE - Performs a preflop action based on hand, round, and other bets'''
 
-            # Increases position that the hand is used depending on aggression
-            if hand_position != "N":
-                hand_position -= self.preflop
+        hand_position = self.choose_hand() # Finds positions available for hand
 
-            if hand_position == "N" or hand_position < self.position:
-                # Folds if the hand is not good for the position
-                self.fold()
-            else:
-                if self.aggression == "":
-                    pass
-                else:
-                    pass
+        # Increases position that the hand is used depending on aggression
+        if hand_position != "N":
+            hand_position -= self.preflop
 
+        if hand_position == "N" or hand_position < self.position:
+            # Folds if the hand is not good for the position
+            self.fold()
         else:
-            # Use GTO
-            players_list = [p.Player(str(item)) for item in self.game.player_list]
+            bet = 0
+            self.bet(bet)
+
+    def decision(self):
+        '''INCOMPLETE - Performs an action based on hand, round, and other bets using GTO'''
+        start = perf_counter_ns()
+
+        # Use GTO
+        players_list = [p.Player(str(num)) for num in range(len(self.game.player_list) - 1)]
+
+        hand = [f"{'10' if c.rank == '10' else c.rank[0].lower()}{c.suit[0].lower()}" for c in self.hole]
+
+        #print(hand)
+
+        try:
+            players_list.insert(0, p.Player("me", p.Card.of(hand[0], hand[1])))
+        except Exception:
+            print(f"Error: {[str(x) for x in self.hole]}")
+            exit()
+
+        cc = [f"{'10' if c.rank == '10' else c.rank[0].lower()}{c.suit[0].lower()}" for c in self.game.comm_cards]
+
+        #print(cc)
+
+        try:
+            comm = p.Card.of(cc[0], cc[1], cc[2])
+            if len(cc) > 3:
+                comm.append(p.Card(cc[3]))
+                if len(cc) > 4:
+                    comm.append(p.Card(cc[4]))
+        except Exception:
+            print(f"Error: {[str(x) for x in self.game.comm_cards]}")
+            exit()
+
+        simulator = p.PokerRound.PokerRoundSimulator(community_cards=comm, players=players_list,
+                                                     total_players=len(players_list))
+
+        simulation_result = simulator.simulate(n = 10000, status_bar = False, n_jobs = -1)
+
+        a = simulation_result.probability_of(p.Probability.PlayerWins(players_list[0]))
+        end = perf_counter_ns()
+        print(end - start)
 
     def bet(self, amount):
         '''Bets a given amount of money by adding it to the pot
@@ -118,7 +154,7 @@ class AI:
 
     def fold(self):
         '''Folds cards (leaving the game) by removing AI from player_list'''
-        self.game.player_list.pop(self)
+        self.game.player_list.remove(self)
 
 
 class Card:
@@ -157,7 +193,7 @@ class Deck:
         '''Deals out 2 cards to all AI players'''
         # Repeats based on num
         # Gives every player a card first, then goes for the next round
-        for round in range(2):
+        for cards in range(2):
             # Gives each player the top card from the deck, then removes that card
             for ai in self.game.ai_list:
                 ai.hole.append(self.cards[0])
@@ -178,14 +214,14 @@ class Deck:
 class Game:
     ''' Creates a game of Texas Holdem'''
     def __init__(self):
-        self.ai_list = [AI("fdsa" + str(x), self, 0, 0) for x in [0, 2, 4, 5]] # List of all AIs
+        self.ai_list = [AI("fdsa" + str(x), self, 0, 0) for x in range(8)] # List of all AIs
         shuffle(self.ai_list) # Randomizes order of players
         self.player_list = self.ai_list.copy() # List of AI playing (who did not fold)
         for ai in self.player_list:
-            if self.ai_list.index(ai) > 4:
-                ai.position = self.ai_list.index(ai) + 5
+            if self.ai_list.index(ai) > 1:
+                ai.position = self.ai_list.index(ai) - 2
             else:
-                ai.position = self.ai_list.index(ai) - 3
+                ai.position = self.ai_list.index(ai) + len(self.ai_list) - 2
         self.comm_cards = [] # Community cards
         self.pot = 0 # Pot (total amount bet by all players)
         self.highest_bet = 0 # Highest bet put down
@@ -236,9 +272,9 @@ class Game:
 # New game
 newGame = Game()
 
-
+NEW_LINE = "\n"
 # Players in game
-#print(f"\nPlayers: {[str(z) for z in newGame.player_list]}")
+print(f"\nPlayers: {NEW_LINE.join([str(z) for z in newGame.player_list])}")
 
 # Cards of players
 #print(f"\nPlayers' cards: {[str(z) + ': ' + str([str(z2) for z2 in z.hole]) for z in newGame.player_list]}")
@@ -253,7 +289,7 @@ newGame.player_list[0].bet(2)
 newGame.player_list[1].bet(4)
 
 for z in newGame.player_list[2:]:
-    z.decision()
+    z.preflop_decision()
 
 # Flop
 newGame.set_round("Flop", 3)
@@ -269,7 +305,7 @@ newGame.showdown()
 #print(f"\nCommunity cards: {[str(z) for z in newGame.comm_cards]}")
 
 # Players in game
-#print(f"\nPlayers: {[str(z) for z in newGame.player_list]}")
+# print(f"\nPlayers: {[str(z) for z in newGame.player_list]}")
 
 # Deck
 #print(str(newGame.deck))
