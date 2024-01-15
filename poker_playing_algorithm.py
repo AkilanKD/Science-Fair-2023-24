@@ -59,8 +59,9 @@ class AI:
         return evaluate_cards(hand[0], hand[1], hand[2], hand[3], hand[4], hand[5], hand[6])
 
     def choose_hand(self):
-        '''TO BE REPLACED - Chooses poker hand from array of poker hands (from CSV) based on AI hand
-        Returns the hand type which the AI has'''
+        '''Chooses poker position from array of poker hands (from CSV) based on AI hand
+        Returns an integer representing which position this can be played in out of 8 players
+        Ex: integer 5 means the hand should be played only by the fifth person () or after'''
 
         # Sets ranks to all cards
         ranks = [CARD_RANKS.index(card.rank) for card in self.hole]
@@ -96,43 +97,56 @@ class AI:
 
     def decision(self):
         '''INCOMPLETE - Performs an action based on hand, round, and other bets using GTO'''
-        start = perf_counter_ns()
 
-        # Use GTO
+        # Creates list of PiedPoker Player objects, each numbered
         players_list = [p.Player(str(num)) for num in range(len(self.game.player_list) - 1)]
-
+        # Creates list of strings which can be used to create PiedPoker Card objects
+        # List represents the hole cards of the player
         hand = [f"{'10' if c.rank == '10' else c.rank[0].lower()}{c.suit[0].lower()}" for c in self.hole]
 
         #print(hand)
 
-        try:
-            players_list.insert(0, p.Player("me", p.Card.of(hand[0], hand[1])))
-        except Exception:
-            print(f"Error: {[str(x) for x in self.hole]}")
-            exit()
+        # Creates a Player object representing the AI, named "self"
+        players_list.insert(0, p.Player("self", p.Card.of(hand[0], hand[1])))
 
+        del hand
+
+        # Creates list of strings which can be used to create Card objects
+        # Represents the community cards
         cc = [f"{'10' if c.rank == '10' else c.rank[0].lower()}{c.suit[0].lower()}" for c in self.game.comm_cards]
 
         #print(cc)
 
-        try:
-            comm = p.Card.of(cc[0], cc[1], cc[2])
-            if len(cc) > 3:
-                comm.append(p.Card(cc[3]))
-                if len(cc) > 4:
-                    comm.append(p.Card(cc[4]))
-        except Exception:
-            print(f"Error: {[str(x) for x in self.game.comm_cards]}")
-            exit()
+        # comm - list of Card objects which represent the community cards
+        # Adds first three cards
+        comm = p.Card.of(cc[0], cc[1], cc[2])
 
-        simulator = p.PokerRound.PokerRoundSimulator(community_cards=comm, players=players_list,
-                                                     total_players=len(players_list))
+        if len(cc) > 3:
+            # Adds fourth card
+            comm.append(p.Card(cc[3]))
+            if len(cc) > 4:
+                # Adds fifth card
+                comm.append(p.Card(cc[4]))
 
-        simulation_result = simulator.simulate(n = 10000, status_bar = False, n_jobs = -1)
+        del cc
 
-        a = simulation_result.probability_of(p.Probability.PlayerWins(players_list[0]))
-        end = perf_counter_ns()
-        print(end - start)
+        print(comm)
+        print(players_list)
+
+        result = p.PokerRound.PokerRoundResult(players_list, comm)
+        # List of outs, which are winning combinations, for the player
+        # Note that they are all PiedPiper Out objects, so they need to be converted back
+        outs = result.outs(players_list[0])
+
+        # List of cards which can create outs
+        player_outs = [out.cards for out in outs]
+        print(player_outs)
+
+        # List of killer cards, which are winning cards, for the player
+        # Note that they are all PiedPiper Killer_Cards objects, so they may need to be converted back
+        
+        killer_cards = result.killer_cards(players_list[1])
+
 
     def bet(self, amount):
         '''Bets a given amount of money by adding it to the pot
@@ -217,11 +231,7 @@ class Game:
         self.ai_list = [AI("fdsa" + str(x), self, 0, 0) for x in range(8)] # List of all AIs
         shuffle(self.ai_list) # Randomizes order of players
         self.player_list = self.ai_list.copy() # List of AI playing (who did not fold)
-        for ai in self.player_list:
-            if self.ai_list.index(ai) > 1:
-                ai.position = self.ai_list.index(ai) - 2
-            else:
-                ai.position = self.ai_list.index(ai) + len(self.ai_list) - 2
+        self.set_positions() # Updates positions of every player
         self.comm_cards = [] # Community cards
         self.pot = 0 # Pot (total amount bet by all players)
         self.highest_bet = 0 # Highest bet put down
@@ -232,6 +242,16 @@ class Game:
         '''Returns round of game'''
         return self.round
 
+    def set_positions(self):
+        '''Sets position for every player based on position in player_list'''
+        for ai in self.player_list:
+            if self.player_list.index(ai) > 1:
+                # Sets players after blinds
+                ai.position = self.player_list.index(ai) - 1
+            else:
+                # Sets players with blinds
+                ai.position = self.player_list.index(ai) + len(self.player_list) - 2
+
     def set_round(self, name, num):
         '''Changes each round in Holdem
         
@@ -240,6 +260,7 @@ class Game:
         num - number of cards revealed in the round'''
         self.round = name
         self.deck.reveal_cards(num)
+        self.set_positions()
         for ai in self.player_list:
             ai.decision()
 
