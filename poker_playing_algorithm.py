@@ -104,8 +104,6 @@ class AI:
         # List represents the hole cards of the player
         hand = [f"{'10' if c.rank == '10' else c.rank[0].lower()}{c.suit[0].lower()}" for c in self.hole]
 
-        #print(hand)
-
         # Creates a Player object representing the AI, named "self"
         players_list.insert(0, p.Player("self", p.Card.of(hand[0], hand[1])))
 
@@ -114,8 +112,6 @@ class AI:
         # Creates list of strings which can be used to create Card objects
         # Represents the community cards
         cc = [f"{'10' if c.rank == '10' else c.rank[0].lower()}{c.suit[0].lower()}" for c in self.game.comm_cards]
-
-        #print(cc)
 
         # comm - list of Card objects which represent the community cards
         # Adds first three cards
@@ -130,22 +126,49 @@ class AI:
 
         del cc
 
-        print(comm)
-        print(players_list)
-
         result = p.PokerRound.PokerRoundResult(players_list, comm)
+
         # List of outs, which are winning combinations, for the player
         # Note that they are all PiedPiper Out objects, so they need to be converted back
         outs = result.outs(players_list[0])
-
+        print(f"Outs: {outs}")
         # List of cards which can create outs
-        player_outs = [out.cards for out in outs]
-        print(player_outs)
+        outs = [out.cards for out in outs]
+
+        winning_cards = []
+        # Adds list of cards to winning_cards
+        for out_list in outs:
+            winning_cards.extend(out_list)
+
+        print(f"Outs: {outs}")
+        print(f"winning_cards: {winning_cards}")
 
         # List of killer cards, which are winning cards, for the player
         # Note that they are all PiedPiper Killer_Cards objects, so they may need to be converted back
-        
-        killer_cards = result.killer_cards(players_list[1])
+        kill_cards = result.outs(players_list[1])
+        print(f"kill_cards: {kill_cards}")
+
+        # Changes kill_cards
+        kill_cards = [kc.cards for kc in kill_cards]
+
+        killer_cards = []
+        # Adds list of cards to winning_cards
+        for kill_list in kill_cards:
+            killer_cards.extend(kill_list)
+
+        print(f"killer_cards: {killer_cards}")
+
+        # List of final winning cards, without killer cards
+        final_winning_cards = winning_cards.copy()
+        final_killer_cards = killer_cards.copy()
+
+        for card in winning_cards:
+            if card in killer_cards:
+                final_winning_cards.remove(card)
+                final_killer_cards.remove(card)
+
+        print(f"final_winning_cards: {final_winning_cards}")
+        print(f"final_killer_cards: {final_killer_cards}")
 
 
     def bet(self, amount):
@@ -250,7 +273,7 @@ class Game:
                 ai.position = self.player_list.index(ai) - 1
             else:
                 # Sets players with blinds
-                ai.position = self.player_list.index(ai) + len(self.player_list) - 2
+                ai.position = self.player_list.index(ai) + len(self.player_list) - 1
 
     def set_round(self, name, num):
         '''Changes each round in Holdem
@@ -289,7 +312,7 @@ class Game:
 
 
 ### GAME ###
-
+start = perf_counter_ns()
 # New game
 newGame = Game()
 
@@ -321,7 +344,8 @@ newGame.set_round("River", 1)
 
 # Showdown
 newGame.showdown()
-
+end = perf_counter_ns()
+print(end - start)
 # Community Cards
 #print(f"\nCommunity cards: {[str(z) for z in newGame.comm_cards]}")
 
