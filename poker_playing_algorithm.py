@@ -1,7 +1,7 @@
 ### IMPORTS ###
 from time import perf_counter_ns, sleep
 from csv import reader
-from math import floor
+from math import factorial, floor
 from random import shuffle
 # PokerHandEvaluator is copyrighted by Henry Lee (2016-2023) and was licensed under the Apache
 # License 2.0
@@ -113,7 +113,7 @@ class AI:
                 self.hole]
 
         # Creates a Player object representing the AI, named "self"
-        players_list.insert(0, p.Player("self", p.Card.of(hand[0], hand[1])))
+        players_list.insert(0, p.Player(self.strategy, p.Card.of(hand[0], hand[1])))
 
         del hand
 
@@ -165,23 +165,32 @@ class AI:
         for kills in kill_cards:
             print(kills)
 
+        outs = result.outs(players_list[0])
+        
+        kill_types = [out.killer_hand_class for out in kill_cards]
+        print(kill_types)
+        #all_outs = [out for out in kill_cards + outs]
+        #print(all_outs)
+        #sorted(all_outs)
+        #print(all_outs)
+
         # Odds of getting a winning card
-        probability = len(winning_cards) / (50 - len(self.game.comm_cards))
+        #probability = len(winning_cards) / (50 - len(self.game.comm_cards))
 
         # Pot odds - ratio of bet required to call
-        pot_odds = self.game.highest_bet / (self.game.highest_bet + self.game.pot)
+        #pot_odds = self.game.highest_bet / (self.game.highest_bet + self.game.pot)
 
         # if
-        if probability > pot_odds:
+        #if probability > pot_odds:
             #self.bet(self.game.highest_bet)
-            pass
-        else:
-            if True:
-                pass
-            else:
+        #    pass
+        #else:
+        #    if True:
+        #        pass
+        #    else:
                 #self.fold()
                 #return None
-                pass
+        #        pass
 
     def bet(self, amount):
         '''Bets a given amount of money by adding it to the pot
