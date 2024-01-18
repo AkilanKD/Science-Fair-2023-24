@@ -102,7 +102,8 @@ class AI:
         players_list = [p.Player(str(num)) for num in range(len(self.game.player_list) - 1)]
         # Creates list of strings which can be used to create PiedPoker Card objects
         # List represents the hole cards of the player
-        hand = [f"{'10' if c.rank == '10' else c.rank[0].lower()}{c.suit[0].lower()}" for c in self.hole]
+        hand = [f"{'10' if c.rank == '10' else c.rank[0].lower()}{c.suit[0].lower()}" for c in
+                self.hole]
 
         # Creates a Player object representing the AI, named "self"
         players_list.insert(0, p.Player("self", p.Card.of(hand[0], hand[1])))
@@ -111,7 +112,8 @@ class AI:
 
         # Creates list of strings which can be used to create Card objects
         # Represents the community cards
-        cc = [f"{'10' if c.rank == '10' else c.rank[0].lower()}{c.suit[0].lower()}" for c in self.game.comm_cards]
+        cc = [f"{'10' if c.rank == '10' else c.rank[0].lower()}{c.suit[0].lower()}" for c in
+              self.game.comm_cards]
 
         # comm - list of Card objects which represent the community cards
         # Adds first three cards
@@ -143,33 +145,19 @@ class AI:
         print(f"Outs: {outs}")
         print(f"winning_cards: {winning_cards}")
 
-        # List of killer cards, which are winning cards, for the player
-        # Note that they are all PiedPiper Killer_Cards objects, so they may need to be converted back
-        kill_cards = result.outs(players_list[1])
-        print(f"kill_cards: {kill_cards}")
+        del outs
 
-        # Changes kill_cards
-        kill_cards = [kc.cards for kc in kill_cards]
+        # Odds of getting a winning card
+        probability = len(winning_cards) / (50 - len(self.game.comm_cards))
 
-        killer_cards = []
-        # Adds list of cards to winning_cards
-        for kill_list in kill_cards:
-            killer_cards.extend(kill_list)
+        # Pot odds - ratio of bet required to call
+        pot_odds = self.game.highest_bet / (self.game.highest_bet + self.game.pot)
 
-        print(f"killer_cards: {killer_cards}")
-
-        # List of final winning cards, without killer cards
-        final_winning_cards = winning_cards.copy()
-        final_killer_cards = killer_cards.copy()
-
-        for card in winning_cards:
-            if card in killer_cards:
-                final_winning_cards.remove(card)
-                final_killer_cards.remove(card)
-
-        print(f"final_winning_cards: {final_winning_cards}")
-        print(f"final_killer_cards: {final_killer_cards}")
-
+        # if 
+        if probability > pot_odds:
+            self.bet(self.game.highest_bet)
+        else:
+            self.fold()
 
     def bet(self, amount):
         '''Bets a given amount of money by adding it to the pot
@@ -251,7 +239,10 @@ class Deck:
 class Game:
     ''' Creates a game of Texas Holdem'''
     def __init__(self):
-        self.ai_list = [AI("fdsa" + str(x), self, 0, 0) for x in range(8)] # List of all AIs
+        self.ai_list = [AI("TAG 1", self, 0, 1), AI("TAG 2", self, 0, 1), AI("LAG 1", self, 1, 1),
+                        AI("LAG 2", self, 1, 1), AI("Maniac 1", self, 1.5, 2),
+                        AI("Maniac 2", self, 1.5, 2), AI("Rock 1", self, 0, 0.5),
+                        AI("Rock 2", self, 0, 0.5)]
         shuffle(self.ai_list) # Randomizes order of players
         self.player_list = self.ai_list.copy() # List of AI playing (who did not fold)
         self.set_positions() # Updates positions of every player
@@ -285,7 +276,10 @@ class Game:
         self.deck.reveal_cards(num)
         self.set_positions()
         for ai in self.player_list:
-            ai.decision()
+            if self.player_list.index(ai) < 2 and self.round == "Flop":
+                ai.preflop_decision()
+            else:
+                ai.decision()
 
     def showdown(self):
         '''Showdown between all players'''
