@@ -89,11 +89,18 @@ class AI:
             hand_position -= self.preflop
 
         if hand_position == "N" or hand_position < self.position:
-            # Folds if the hand is not good for the position
-            self.fold()
+            # Bets if no one else bet and the AI is last
+            if self.position == len(self.game.ai_list):
+                self.bet(self.game.largest_bet)
+                return None
+            else:
+                # Folds if the hand is not good for the position
+                self.fold()
+                return None
         else:
             bet = 0
             self.bet(bet)
+            return None
 
     def decision(self):
         '''INCOMPLETE - Performs an action based on hand, round, and other bets using GTO'''
@@ -133,6 +140,7 @@ class AI:
         # List of outs, which are winning combinations, for the player
         # Note that they are all PiedPiper Out objects, so they need to be converted back
         outs = result.outs(players_list[0])
+        print(result)
         print(f"Outs: {outs}")
         # List of cards which can create outs
         outs = [out.cards for out in outs]
@@ -147,17 +155,33 @@ class AI:
 
         del outs
 
+        # Find who is ahead
+        boolean = players_list[0] in result.winners
+        print(boolean)
+
+        kill_cards = result.killer_cards(players_list[1])
+        print(f"Kill_cards: {kill_cards}")
+
+        for kills in kill_cards:
+            print(kills)
+
         # Odds of getting a winning card
         probability = len(winning_cards) / (50 - len(self.game.comm_cards))
 
         # Pot odds - ratio of bet required to call
         pot_odds = self.game.highest_bet / (self.game.highest_bet + self.game.pot)
 
-        # if 
+        # if
         if probability > pot_odds:
-            self.bet(self.game.highest_bet)
+            #self.bet(self.game.highest_bet)
+            pass
         else:
-            self.fold()
+            if True:
+                pass
+            else:
+                #self.fold()
+                #return None
+                pass
 
     def bet(self, amount):
         '''Bets a given amount of money by adding it to the pot
@@ -295,8 +319,10 @@ class Game:
         hands.sort()
 
         # hands_dict[hands[0]] = list of AIs with the highest hand
-        for ai in hands_dict[hands[0]]:
-            ai.money += floor(self.pot / len(hands_dict[hands[0]]))
+
+        if len(hands_dict) > 0:
+            for ai in hands_dict[hands[0]]:
+                ai.money += floor(self.pot / len(hands_dict[hands[0]]))
 
         # Sets the pot to the remaining money left
         self.pot %= len(hands_dict[hands[0]])
