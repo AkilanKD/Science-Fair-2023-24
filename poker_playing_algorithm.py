@@ -1,7 +1,7 @@
 ### IMPORTS ###
 from time import perf_counter_ns, sleep
 from csv import reader
-from math import factorial, floor
+from math import floor
 from random import shuffle
 # PokerHandEvaluator is copyrighted by Henry Lee (2016-2023) and was licensed under the Apache
 # License 2.0
@@ -19,6 +19,10 @@ CARD_RANKS = tuple(str(card) for card in range(2, 11)) + ("Jack", "Queen", "King
 
 # List of card suits
 CARD_SUITS = ("Spades", "Hearts", "Clubs", "Diamonds")
+
+# Dictionary of 
+HANDS_DICT = ["HighCard", "OnePair", "TwoPair", "ThreeOfAKind", "Straight", "Flush", "FullHouse", "FourOfAKind",
+              "StraightFlush", "RoyalFlush"]
 
 print("Finished import")
 
@@ -103,7 +107,11 @@ class AI:
             return None
 
     def decision(self):
-        '''INCOMPLETE - Performs an action based on hand, round, and other bets using GTO'''
+        '''INCOMPLETE - Performs an action based on hand, round, and other bets using pot odds'''
+
+        # Checks if it is the only AI left
+        if len(self.game.player_list) == 1:
+            return None
 
         # Creates list of PiedPoker Player objects, each numbered
         players_list = [p.Player(str(num)) for num in range(len(self.game.player_list) - 1)]
@@ -113,7 +121,7 @@ class AI:
                 self.hole]
 
         # Creates a Player object representing the AI, named "self"
-        players_list.insert(0, p.Player(self.strategy, p.Card.of(hand[0], hand[1])))
+        players_list.insert(0, p.Player("self", p.Card.of(hand[0], hand[1])))
 
         del hand
 
@@ -137,60 +145,70 @@ class AI:
 
         result = p.PokerRound.PokerRoundResult(players_list, comm)
 
+        print(result)
+
+        # Finds hand type by turning the hand into a string, then finding the string before the
+        # first "("
+        # Ex: str(players_list[0].poker_hand(comm)) becomes TwoPair([A♠, A♦, 10♣, 10♠], [9♣])
+        # TwoPair([A♠, A♦, 10♣, 10♠], [9♣]) becomes TwoPair
+        hand = str(players_list[0].poker_hand(comm)).rsplit('(', maxsplit=1)[0]
+        # Finds where it is relative to HANDS_DICT
+        hand = HANDS_DICT.index(hand)
+        print(hand)
+
         # List of outs, which are winning combinations, for the player
         # Note that they are all PiedPiper Out objects, so they need to be converted back
         outs = result.outs(players_list[0])
-        print(result)
-        print(f"Outs: {outs}")
-        # List of cards which can create outs
-        outs = [out.cards for out in outs]
+        print(f"outs: {outs}")
 
-        winning_cards = []
-        # Adds list of cards to winning_cards
-        for out_list in outs:
-            winning_cards.extend(out_list)
+        # List number of cards available to create out
+        out_cards = [len(out.cards) for out in outs]
 
-        print(f"Outs: {outs}")
-        print(f"winning_cards: {winning_cards}")
+        # List of out types
+        out_types = [out.out_class for out in outs]
+        # Converted to string
+        out_types = [str(item).rsplit('.', maxsplit=1)[-1][:-2] for item in out_types]
+        # Finds location of type
+        out_types = [HANDS_DICT.index(out) for out in out_types]
 
-        del outs
+        # Dictionary of outs
+        # Matches each out to the number of cards which can cause the out to occur
+        outs_dict = {out_rank:num_of_cards for (out_rank, num_of_cards) in zip(out_types, out_cards)}
+        print(f"outs_dict: {outs_dict}")
 
-        # Find who is ahead
-        boolean = players_list[0] in result.winners
-        print(boolean)
+        killer_cards = result.killer_cards(players_list[1])
+        print(f"Killer_cards: {killer_cards}")
 
-        kill_cards = result.killer_cards(players_list[1])
-        print(f"Kill_cards: {kill_cards}")
+        # List number of cards available to create killer
+        kill_cards = [len(out.cards) for out in killer_cards]
 
-        for kills in kill_cards:
-            print(kills)
-
-        outs = result.outs(players_list[0])
+        # List of killer types
+        killer_types = [out.killer_hand_class for out in killer_cards]
+        # Converts to string
+        killer_types = [str(item).rsplit('.', maxsplit=1)[-1][:-2] for item in killer_types]
+        # Finds location of type
+        killer_types = [HANDS_DICT.index(out) for out in killer_types]
         
-        kill_types = [out.killer_hand_class for out in kill_cards]
-        print(kill_types)
-        #all_outs = [out for out in kill_cards + outs]
-        #print(all_outs)
-        #sorted(all_outs)
-        #print(all_outs)
+        killer_dict = {out_rank:num_of_cards for (out_rank, num_of_cards) in zip(killer_types, kill_cards)}
+        print(f"killer_dict: {killer_dict}")
 
         # Odds of getting a winning card
         #probability = len(winning_cards) / (50 - len(self.game.comm_cards))
 
         # Pot odds - ratio of bet required to call
-        #pot_odds = self.game.highest_bet / (self.game.highest_bet + self.game.pot)
+        pot_odds = self.game.highest_bet / (self.game.highest_bet + self.game.pot)
 
-        # if
-        #if probability > pot_odds:
+        # checks probability
+        '''if probability > pot_odds:
             #self.bet(self.game.highest_bet)
         #    pass
-        #else:
-        #    if True:
-        #        pass
-        #    else:
+        else:
+            if not self.game.bet_round:
+                pass
+            else:
                 #self.fold()
                 #return None
-        #        pass
+                pass'''
 
     def bet(self, amount):
         '''Bets a given amount of money by adding it to the pot
@@ -209,6 +227,9 @@ class AI:
         # Resets highest bet if bet was raised
         if amount > self.game.highest_bet:
             self.game.highest_bet = amount
+        
+        # Indicates that bet was placed
+        self.game.bet_round = True
 
     def fold(self):
         '''Folds cards (leaving the game) by removing AI from player_list'''
@@ -282,6 +303,7 @@ class Game:
         self.comm_cards = [] # Community cards
         self.pot = 0 # Pot (total amount bet by all players)
         self.highest_bet = 0 # Highest bet put down
+        self.bet_round = False
         self.deck = Deck(self) # Deck of cards
         self.round = "Preflop" # Round of game
 
@@ -308,6 +330,7 @@ class Game:
         self.round = name
         self.deck.reveal_cards(num)
         self.set_positions()
+        self.bet_round = False
         for ai in self.player_list:
             if self.player_list.index(ai) < 2 and self.round == "Flop":
                 ai.preflop_decision()
