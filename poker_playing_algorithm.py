@@ -31,25 +31,32 @@ CARD_SUITS = ("Spades", "Hearts", "Clubs", "Diamonds")
 HANDS_LIST = ["HighCard", "OnePair", "TwoPair", "ThreeOfAKind", "Straight", "Flush", "FullHouse",
               "FourOfAKind", "StraightFlush", "RoyalFlush"]
 
+# List of AIs
+ai_type_list = ["TAG", "LAG", "Rock", "Maniac"]
+ai_win_list = [0, 0, 0, 0]
+ai_profit_list = [0, 0, 0, 0]
+
 def hand_probability(num: int, player, comm_revealed: int, num_players: int):
     '''Finds the probability that a certain hand will occur
     Returns the probability that a certain hand will occur in a game
 
     Parameters:
     num - number of cards that can cause the hand to occur
-    player - hero or villain
+    player - out (meaning hero) or killer (meaning villain)
     comm_revealed - number of community cards revealed
     num_players - number of players (including hero)'''
 
-    if player == "hero":
-        # Calculates number of cards in deck which do not form hand for every community card left
-        non_hand_cards = perm(50 - comm_revealed - num, 5 - comm_revealed)
-    else:
-        # Calculates number of cards in deck which do not form hand for every community card left
-        non_hand_cards = perm(50 - comm_revealed - num, 5 - comm_revealed + ((num_players - 1) * 2))
-    
-    non_hand_cards = 0
-    all_cards = perm(50 - comm_revealed, 5 - comm_revealed)
+    # Number of spots available for cards
+    # Initially set to the number of community cards
+    num_spots = 5 - comm_revealed
+
+    # Adds spots for every villain if checking for killer cards
+    if player == "killer":
+        num_spots += (num_players - 1) * 2
+
+    non_hand_cards = perm(50 - comm_revealed - num, num_spots)
+    all_cards = perm(50 - comm_revealed, num_spots)
+
     # Calculates probability that none of the remaining community cards can form a hand, then
     # finds its opposite
     return 1 - (non_hand_cards / all_cards)
@@ -231,7 +238,11 @@ class AI:
         all_types = sorted(all_types, key=itemgetter(0, 1), reverse=True)
         print(all_types)
 
+        out_prob = 0
+        killer_prob = 0
 
+        for type in all_types:
+            pass
 
         # Odds of getting a winning card
         #probability = len(winning_cards) / (50 - len(self.game.comm_cards))
