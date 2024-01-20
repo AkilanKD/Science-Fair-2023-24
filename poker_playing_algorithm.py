@@ -1,18 +1,25 @@
 ### IMPORTS ###
 from time import perf_counter_ns, sleep
 from csv import reader
-from math import floor
+from math import floor, perm
+from operator import itemgetter
 from random import shuffle
 # PokerHandEvaluator is copyrighted by Henry Lee (2016-2023) and was licensed under the Apache
 # License 2.0
 from phevaluator import evaluate_cards
 import pied_poker as p
+
+
+
+
+### CONSTANTS ###
 PREFLOP_RANGES = [] # Holds 2D array of all possible hands
 with open("PREFLOP_RANGES.csv", "r", encoding="utf-8") as csv_file: # Extracts data from csv
     data_reader = reader(csv_file) # Extracts data from csv_file, separated by line
     for row in data_reader:
         # Adds each individual row to PREFLOP_RANGES as its own list
         PREFLOP_RANGES.append([int(item) if item != "N" else item for item in row])
+
 # List of card ranks
 # Combines face cards with number cards (created with a range)
 CARD_RANKS = tuple(str(card) for card in range(2, 11)) + ("Jack", "Queen", "King", "Ace")
@@ -20,9 +27,32 @@ CARD_RANKS = tuple(str(card) for card in range(2, 11)) + ("Jack", "Queen", "King
 # List of card suits
 CARD_SUITS = ("Spades", "Hearts", "Clubs", "Diamonds")
 
-# Dictionary of 
-HANDS_DICT = ["HighCard", "OnePair", "TwoPair", "ThreeOfAKind", "Straight", "Flush", "FullHouse", "FourOfAKind",
-              "StraightFlush", "RoyalFlush"]
+# Dictionary of hand types
+HANDS_LIST = ["HighCard", "OnePair", "TwoPair", "ThreeOfAKind", "Straight", "Flush", "FullHouse",
+              "FourOfAKind", "StraightFlush", "RoyalFlush"]
+
+def hand_probability(num: int, player, comm_revealed: int, num_players: int):
+    '''Finds the probability that a certain hand will occur
+    Returns the probability that a certain hand will occur in a game
+
+    Parameters:
+    num - number of cards that can cause the hand to occur
+    player - hero or villain
+    comm_revealed - number of community cards revealed
+    num_players - number of players (including hero)'''
+
+    if player == "hero":
+        # Calculates number of cards in deck which do not form hand for every community card left
+        non_hand_cards = perm(50 - comm_revealed - num, 5 - comm_revealed)
+    else:
+        # Calculates number of cards in deck which do not form hand for every community card left
+        non_hand_cards = perm(50 - comm_revealed - num, 5 - comm_revealed + ((num_players - 1) * 2))
+    
+    non_hand_cards = 0
+    all_cards = perm(50 - comm_revealed, 5 - comm_revealed)
+    # Calculates probability that none of the remaining community cards can form a hand, then
+    # finds its opposite
+    return 1 - (non_hand_cards / all_cards)
 
 print("Finished import")
 
@@ -102,8 +132,7 @@ class AI:
                 self.fold()
                 return None
         else:
-            bet = 0
-            self.bet(bet)
+            self.bet(self.game.highest_bet * self.aggression)
             return None
 
     def decision(self):
@@ -152,8 +181,8 @@ class AI:
         # Ex: str(players_list[0].poker_hand(comm)) becomes TwoPair([A♠, A♦, 10♣, 10♠], [9♣])
         # TwoPair([A♠, A♦, 10♣, 10♠], [9♣]) becomes TwoPair
         hand = str(players_list[0].poker_hand(comm)).rsplit('(', maxsplit=1)[0]
-        # Finds where it is relative to HANDS_DICT
-        hand = HANDS_DICT.index(hand)
+        # Finds where it is relative to HANDS_LIST
+        hand = HANDS_LIST.index(hand)
         print(hand)
 
         # List of outs, which are winning combinations, for the player
@@ -169,11 +198,11 @@ class AI:
         # Converted to string
         out_types = [str(item).rsplit('.', maxsplit=1)[-1][:-2] for item in out_types]
         # Finds location of type
-        out_types = [HANDS_DICT.index(out) for out in out_types]
+        out_types = [HANDS_LIST.index(out) for out in out_types]
 
         # Dictionary of outs
         # Matches each out to the number of cards which can cause the out to occur
-        outs_dict = {out_rank:num_of_cards for (out_rank, num_of_cards) in zip(out_types, out_cards)}
+        outs_dict = {rank:num_cards for (rank, num_cards) in zip(out_types, out_cards)}
         print(f"outs_dict: {outs_dict}")
 
         killer_cards = result.killer_cards(players_list[1])
@@ -187,10 +216,22 @@ class AI:
         # Converts to string
         killer_types = [str(item).rsplit('.', maxsplit=1)[-1][:-2] for item in killer_types]
         # Finds location of type
-        killer_types = [HANDS_DICT.index(out) for out in killer_types]
-        
-        killer_dict = {out_rank:num_of_cards for (out_rank, num_of_cards) in zip(killer_types, kill_cards)}
+        killer_types = [HANDS_LIST.index(out) for out in killer_types]
+
+        killer_dict = {rank:num_cards for (rank, num_cards) in zip(killer_types, kill_cards)}
         print(f"killer_dict: {killer_dict}")
+
+        # Creates lists of list
+        # Each inner list represents a specific hand
+        # Has the hand type, then who has it, then the number of cards
+        # Uses "out" (hero) and "killer" (villain) for consistency and easier sorting
+        all_types = [[out_types[hand], "out", out_cards[hand]] for hand in range(len(out_types))]
+        all_types.extend([[killer_types[hand], "killer", kill_cards[hand]] for hand in
+                          range(len(killer_types))])
+        all_types = sorted(all_types, key=itemgetter(0, 1), reverse=True)
+        print(all_types)
+
+
 
         # Odds of getting a winning card
         #probability = len(winning_cards) / (50 - len(self.game.comm_cards))
@@ -227,7 +268,7 @@ class AI:
         # Resets highest bet if bet was raised
         if amount > self.game.highest_bet:
             self.game.highest_bet = amount
-        
+
         # Indicates that bet was placed
         self.game.bet_round = True
 
@@ -293,10 +334,10 @@ class Deck:
 class Game:
     ''' Creates a game of Texas Holdem'''
     def __init__(self):
-        self.ai_list = [AI("TAG 1", self, 0, 1), AI("TAG 2", self, 0, 1), AI("LAG 1", self, 1, 1),
-                        AI("LAG 2", self, 1, 1), AI("Maniac 1", self, 1.5, 2),
-                        AI("Maniac 2", self, 1.5, 2), AI("Rock 1", self, 0, 0.5),
-                        AI("Rock 2", self, 0, 0.5)]
+        self.ai_list = [AI("TAG 1", self, 0, 1.5), AI("TAG 2", self, 0, 1.5),
+                        AI("LAG 1", self, 1, 1.5), AI("LAG 2", self, 1, 1.5),
+                        AI("Maniac 1", self, 2, 2), AI("Maniac 2", self, 2, 2),
+                        AI("Rock 1", self, 0, 1), AI("Rock 2", self, 0, 1)]
         shuffle(self.ai_list) # Randomizes order of players
         self.player_list = self.ai_list.copy() # List of AI playing (who did not fold)
         self.set_positions() # Updates positions of every player
