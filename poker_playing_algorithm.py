@@ -370,7 +370,6 @@ class Game:
         shuffle(self.ai_list) # Randomizes order of players
         self.player_list = self.ai_list.copy() # List of AI playing (who did not fold)
         self.set_positions() # Updates positions of every player
-        print([item.position for item in self.player_list])
         self.comm_cards = [] # Community cards
         self.pot = 0 # Pot (total amount bet by all players)
         self.highest_bet = 0 # Highest bet put down
