@@ -1,6 +1,6 @@
 ### IMPORTS ###
-from time import perf_counter_ns, sleep
-from csv import reader
+from time import sleep
+from csv import reader, writer, QUOTE_NONNUMERIC
 from math import floor, perm
 from operator import itemgetter
 from random import shuffle
@@ -13,9 +13,10 @@ import pied_poker as p
 
 
 ### CONSTANTS ###
+
 PREFLOP_RANGES = [] # Holds 2D array of all possible hands
-with open("PREFLOP_RANGES.csv", "r", encoding="utf-8") as csv_file: # Extracts data from csv
-    data_reader = reader(csv_file) # Extracts data from csv_file, separated by line
+with open("PREFLOP_RANGES.csv", "r", encoding="utf-8") as csv_file: # Sets up csv as csv_file
+    data_reader = reader(csv_file) # Creates object to read csv_file, separated by line
     for row in data_reader:
         # Adds each individual row to PREFLOP_RANGES as its own list
         PREFLOP_RANGES.append([int(item) if item != "N" else item for item in row])
@@ -31,20 +32,17 @@ CARD_SUITS = ("Spades", "Hearts", "Clubs", "Diamonds")
 HANDS_LIST = ["HighCard", "OnePair", "TwoPair", "ThreeOfAKind", "Straight", "Flush", "FullHouse",
               "FourOfAKind", "StraightFlush", "RoyalFlush"]
 
-# List of AIs
-ai_type_list = ["TAG", "LAG", "Rock", "Maniac"]
-ai_win_list = [0, 0, 0, 0]
-ai_profit_list = [0, 0, 0, 0]
 
 def hand_probability(num: int, player, comm_revealed: int, num_players: int):
     '''Finds the probability that a certain hand will occur
-    Returns the probability that a certain hand will occur in a game
-
-    Parameters:
-    num - number of cards that can cause the hand to occur
-    player - out (meaning hero) or killer (meaning villain)
-    comm_revealed - number of community cards revealed
-    num_players - number of players (including hero)'''
+    
+    Parameters:\n
+    num - number of cards that can cause the hand to occur\n
+    player - out (meaning hero) or killer (meaning villain)\n
+    comm_revealed - number of community cards revealed\n
+    num_players - number of players (including hero)\n
+    
+    Returns the probability that a certain hand will occur in a game'''
 
     # Number of spots available for cards
     # Initially set to the number of community cards
@@ -54,16 +52,18 @@ def hand_probability(num: int, player, comm_revealed: int, num_players: int):
     if player == "killer":
         num_spots += (num_players - 1) * 2
 
+    # Total number of permutations of not selecting the card for every spot available
     non_hand_cards = perm(50 - comm_revealed - num, num_spots)
+    # Total number of permutations of any card being selected for every spot available
     all_cards = perm(50 - comm_revealed, num_spots)
 
     # Calculates probability that none of the remaining community cards can form a hand, then
-    # finds its opposite
+    # finds its complement
     return 1 - (non_hand_cards / all_cards)
 
-print("Finished import")
+print("Setup complete\n")
 
-full_start = perf_counter_ns()
+
 
 
 
@@ -72,10 +72,11 @@ full_start = perf_counter_ns()
 # Poker-playing AIs
 class AI:
     '''Poker-playing AIs'''
-    def __init__(self, strategy, game, preflop, aggression):
-        self.strategy = strategy # AI strategy name
+    def __init__(self, name, game, preflop, aggression):
+        self.name = name # AI strategy name
+        self.strategy = name.rsplit(" ")[0] # Strategy name which AI uses
         self.game = game # Game which the AI is in
-        self.money = 100 # Money on hand - Initially at 100
+        self.money = 10000 # Money on hand - Initially at 10000
         self.hole = [] # Hand (cards held by the AI) - aka hole cards
         self.preflop = preflop # Preflop hand range (0 = tight, 0.5 = loose, 1 = very loose)
         self.aggression = aggression # Aggressiveness of preflop bets
@@ -83,13 +84,14 @@ class AI:
 
     def __str__(self):
         '''Lists strategy & money
+
         Ex: "Strategy: Tight Aggressive", Money: 100'''
-        return f"Strategy: {self.strategy}, Money: {self.money}, Position: {self.position}, Cards: {[str(card) for card in self.hole]}"
+        return f"Name: {self.name}, Money: {self.money}, Position: {self.position}, Cards: {[str(card) for card in self.hole]}"
 
     def evaluate(self):
         '''Evaluates the hand of the deck
 
-        Returns an integer which represents the value of the hand
+        Returns an integer which represents the value of the hand\n
         Lower values represent better hands'''
 
         # Total cards available for player
@@ -101,7 +103,9 @@ class AI:
 
     def choose_hand(self):
         '''Chooses poker position from array of poker hands (from CSV) based on AI hand
+        
         Returns an integer representing which position this can be played in out of 8 players
+        
         Ex: integer 5 means the hand should be played only by the fifth person () or after'''
 
         # Sets ranks to all cards
@@ -121,7 +125,7 @@ class AI:
             return PREFLOP_RANGES[12-min(ranks)][12-max(ranks)]
 
     def preflop_decision(self):
-        '''INCOMPLETE - Performs a preflop action based on hand, round, and other bets'''
+        '''Performs a preflop action based on hand, position, and other bets'''
 
         hand_position = self.choose_hand() # Finds positions available for hand
 
@@ -130,20 +134,21 @@ class AI:
             hand_position -= self.preflop
 
         if hand_position == "N" or hand_position < self.position:
-            # Bets if no one else bet and the AI is last
+            # Calls if no one else bet (outside of blinds) and the AI is last
             if self.position == len(self.game.ai_list):
-                self.bet(self.game.largest_bet)
+                self.bet(self.game.highest_bet)
                 return None
             else:
                 # Folds if the hand is not good for the position
                 self.fold()
                 return None
         else:
+            # Calls/raises depending on aggression
             self.bet(self.game.highest_bet * self.aggression)
             return None
 
     def decision(self):
-        '''INCOMPLETE - Performs an action based on hand, round, and other bets using pot odds'''
+        '''Performs an action (after preflop) based on hand and other bets using pot odds'''
 
         # Checks if it is the only AI left
         if len(self.game.player_list) == 1:
@@ -181,8 +186,6 @@ class AI:
 
         result = p.PokerRound.PokerRoundResult(players_list, comm)
 
-        print(result)
-
         # Finds hand type by turning the hand into a string, then finding the string before the
         # first "("
         # Ex: str(players_list[0].poker_hand(comm)) becomes TwoPair([A♠, A♦, 10♣, 10♠], [9♣])
@@ -190,12 +193,10 @@ class AI:
         hand = str(players_list[0].poker_hand(comm)).rsplit('(', maxsplit=1)[0]
         # Finds where it is relative to HANDS_LIST
         hand = HANDS_LIST.index(hand)
-        print(hand)
 
         # List of outs, which are winning combinations, for the player
         # Note that they are all PiedPiper Out objects, so they need to be converted back
         outs = result.outs(players_list[0])
-        print(f"outs: {outs}")
 
         # List number of cards available to create out
         out_cards = [len(out.cards) for out in outs]
@@ -207,13 +208,7 @@ class AI:
         # Finds location of type
         out_types = [HANDS_LIST.index(out) for out in out_types]
 
-        # Dictionary of outs
-        # Matches each out to the number of cards which can cause the out to occur
-        outs_dict = {rank:num_cards for (rank, num_cards) in zip(out_types, out_cards)}
-        print(f"outs_dict: {outs_dict}")
-
         killer_cards = result.killer_cards(players_list[1])
-        print(f"Killer_cards: {killer_cards}")
 
         # List number of cards available to create killer
         kill_cards = [len(out.cards) for out in killer_cards]
@@ -225,8 +220,7 @@ class AI:
         # Finds location of type
         killer_types = [HANDS_LIST.index(out) for out in killer_types]
 
-        killer_dict = {rank:num_cards for (rank, num_cards) in zip(killer_types, kill_cards)}
-        print(f"killer_dict: {killer_dict}")
+        del result, outs, killer_cards
 
         # Creates lists of list
         # Each inner list represents a specific hand
@@ -235,50 +229,74 @@ class AI:
         all_types = [[out_types[hand], "out", out_cards[hand]] for hand in range(len(out_types))]
         all_types.extend([[killer_types[hand], "killer", kill_cards[hand]] for hand in
                           range(len(killer_types))])
+        # Line below was based off a from a line made by John La Rooy
         all_types = sorted(all_types, key=itemgetter(0, 1), reverse=True)
-        print(all_types)
 
-        out_prob = 0
-        killer_prob = 0
+        # Win & lose odds
+        win_prob = 0
+        lose_prob = 0
+        # Odds of certain hands not occuring
+        remaining_prob = 1
+        for item in all_types:
+            # Calculates base odds of getting certain out
+            probability = hand_probability(item[2], item[1], len(self.game.comm_cards),
+                                           len(self.game.player_list))
 
-        for type in all_types:
-            pass
+            # Adds odds that hand occurs (given that better hands didn't occur) to winning or losing
+            # probabilities depending on whether it is an out or a killer card
+            if type[1] == "out":
+                win_prob += probability * remaining_prob
+            else:
+                lose_prob += probability * remaining_prob
 
-        # Odds of getting a winning card
-        #probability = len(winning_cards) / (50 - len(self.game.comm_cards))
+            # Removes probability of hand occuring
+            remaining_prob -= probability * remaining_prob
+
+        # Adds odds that none of the outs/killer cards occur to the winning odds
+        win_prob += remaining_prob
 
         # Pot odds - ratio of bet required to call
         pot_odds = self.game.highest_bet / (self.game.highest_bet + self.game.pot)
 
-        # checks probability
-        '''if probability > pot_odds:
-            #self.bet(self.game.highest_bet)
-        #    pass
+        # Checks probability
+        if probability > pot_odds:
+            # Uses pot odds in reverse to calculate the bet and raise
+            bet = self.game.highest_bet + (self.game.highest_bet / probability) - self.game.pot
+            self.bet(bet)
+            return None
+
         else:
+            # Checks (skips turn) if no one has bet yet
             if not self.game.bet_round:
-                pass
-            else:
-                #self.fold()
-                #return None
-                pass'''
+                return None
+
+            # Folds if there has been earlier betting
+            self.fold()
+            return None
 
     def bet(self, amount):
         '''Bets a given amount of money by adding it to the pot
 
-        Parameter:
+        Parameter:\n
         amount - amount of money to bet'''
+
+        money_bet = floor(amount)
+
+        # Increases bet to highest_bet if it is too low
+        if money_bet < self.game.highest_bet:
+            money_bet = self.game.highest_bet
 
         # Lowers bet to max possible if bet is too high
         if self.money - amount < 0:
-            amount = self.money
+            money_bet = self.money
 
         # Moves amount bet from money to pot
-        self.money -= amount
-        self.game.pot += amount
+        self.money -= money_bet
+        self.game.pot += money_bet
 
         # Resets highest bet if bet was raised
-        if amount > self.game.highest_bet:
-            self.game.highest_bet = amount
+        if money_bet > self.game.highest_bet:
+            self.game.highest_bet = money_bet
 
         # Indicates that bet was placed
         self.game.bet_round = True
@@ -333,7 +351,7 @@ class Deck:
     def reveal_cards(self, num):
         '''Reveals community cards
 
-        Parameter:
+        Parameter:\n
         num - number of cards revealed'''
         # Adds all cards from deck with indices from 0 (start) to num to the comm_cards list
         self.game.comm_cards.extend(self.cards[0:num])
@@ -373,11 +391,11 @@ class Game:
                 # Sets players with blinds
                 ai.position = self.player_list.index(ai) + len(self.player_list) - 1
 
-    def set_round(self, name, num):
-        '''Changes each round in Holdem
+    def set_round(self, name: str, num: int):
+        '''Changes each round in Holdem\n
         
-        Parameters:
-        name - name of the round
+        Parameters:\n
+        name - name of the round\n
         num - number of cards revealed in the round'''
         self.round = name
         self.deck.reveal_cards(num)
@@ -402,63 +420,63 @@ class Game:
         hands = list(hands_dict.keys())
         hands.sort()
 
-        # hands_dict[hands[0]] = list of AIs with the highest hand
+        # List of winning AIs
+        winners = hands_dict[hands[0]]
 
         if len(hands_dict) > 0:
-            for ai in hands_dict[hands[0]]:
-                ai.money += floor(self.pot / len(hands_dict[hands[0]]))
+            for ai in winners:
+                ai.money += int(floor(self.pot / len(winners)))
 
         # Sets the pot to the remaining money left
-        self.pot %= len(hands_dict[hands[0]])
+        self.pot %= len(winners)
+
+        # List of AIs' strategies, net profit, number of games won (1 = win, 0-1 = tie with others,
+        # 0 = loss), and position (doesn't use the same system for position in the rest of the code)
+        ne_ai_list = [[ai.strategy, ai.money - 10000, (1 / len(winners)) if ai.money > 10000 else 0,
+                        self.ai_list.index(ai)] for ai in self.ai_list]
+
+        with open("RESULTS.csv", "a", encoding="utf-8", newline="") as file: # Opens RESULTS as file
+            read_file = writer(file, quoting=QUOTE_NONNUMERIC) # Creates object to rewrite RESULTS
+            read_file.writerows(ne_ai_list) # Adds all stats to RESULTS as new lines each
 
 
 
 
 
 ### GAME ###
-start = perf_counter_ns()
-# New game
-newGame = Game()
 
-NEW_LINE = "\n"
-# Players in game
-print(f"\nPlayers: {NEW_LINE.join([str(z) for z in newGame.player_list])}")
 
-# Cards of players
-#print(f"\nPlayers' cards: {[str(z) + ': ' + str([str(z2) for z2 in z.hole]) for z in newGame.player_list]}")
 
-# Deck
-#print(f"\nDeck: {str(newGame.deck)}")
 
-# Preflop
-# Small blind
-newGame.player_list[0].bet(2)
-# Big blind
-newGame.player_list[1].bet(4)
+# Asks for number of games to simulate
+num_of_games = int(input("How many games would you like to simulate?\n"))
 
-for z in newGame.player_list[2:]:
-    z.preflop_decision()
+for x in range(num_of_games):
+    # Creates game
+    newGame = Game()
 
-# Flop
-newGame.set_round("Flop", 3)
-# Turn
-newGame.set_round("Turn", 1)
-# River
-newGame.set_round("River", 1)
+    # Preflop
+    # Small blind
+    newGame.player_list[0].bet(2)
+    # Big blind
+    newGame.player_list[1].bet(4)
 
-# Showdown
-newGame.showdown()
-end = perf_counter_ns()
-print(end - start)
-# Community Cards
-#print(f"\nCommunity cards: {[str(z) for z in newGame.comm_cards]}")
+    # Makes a preflop decision for non blinds
+    for z in newGame.player_list[2:]:
+        z.preflop_decision()
 
-# Players in game
-# print(f"\nPlayers: {[str(z) for z in newGame.player_list]}")
+    # Flop
+    newGame.set_round("Flop", 3)
+    # Turn
+    newGame.set_round("Turn", 1)
+    # River
+    newGame.set_round("River", 1)
 
-# Deck
-#print(str(newGame.deck))
-#print(len(newGame.deck.cards))
+    # Showdown
+    newGame.showdown()
 
-# Community Cards
-#print([str(z) for z in newGame.comm_cards])
+    # Deletes game
+    del newGame
+
+print("\nSimulation is complete! Your data can be found in RESULTS.csv.")
+sleep(600)
