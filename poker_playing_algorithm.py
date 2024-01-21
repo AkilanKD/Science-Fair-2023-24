@@ -129,9 +129,8 @@ class AI:
 
         hand_position = self.choose_hand() # Finds positions available for hand
 
-        # Increases position that the hand is used depending on aggression
-        if hand_position != "N":
-            hand_position -= self.preflop
+        # Increases position depending on preflop aggression
+        self.position += self.preflop
 
         if hand_position == "N" or hand_position < self.position:
             # Calls if no one else bet (outside of blinds) and the AI is last
@@ -371,6 +370,7 @@ class Game:
         shuffle(self.ai_list) # Randomizes order of players
         self.player_list = self.ai_list.copy() # List of AI playing (who did not fold)
         self.set_positions() # Updates positions of every player
+        print([item.position for item in self.player_list])
         self.comm_cards = [] # Community cards
         self.pot = 0 # Pot (total amount bet by all players)
         self.highest_bet = 0 # Highest bet put down
