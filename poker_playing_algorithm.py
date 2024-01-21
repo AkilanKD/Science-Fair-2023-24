@@ -237,6 +237,7 @@ class AI:
         lose_prob = 0
         # Odds of certain hands not occuring
         remaining_prob = 1
+        probability = 0
         for item in all_types:
             # Calculates base odds of getting certain out
             probability = hand_probability(item[2], item[1], len(self.game.comm_cards),
