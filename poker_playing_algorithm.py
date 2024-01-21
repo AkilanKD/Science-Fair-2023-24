@@ -452,31 +452,36 @@ class Game:
 num_of_games = int(input("How many games would you like to simulate?\n"))
 
 for x in range(num_of_games):
-    # Creates game
-    newGame = Game()
+    try:
+        # Creates game
+        newGame = Game()
 
-    # Preflop
-    # Small blind
-    newGame.player_list[0].bet(2)
-    # Big blind
-    newGame.player_list[1].bet(4)
+        # Preflop
+        # Small blind
+        newGame.player_list[0].bet(2)
+        # Big blind
+        newGame.player_list[1].bet(4)
 
-    # Makes a preflop decision for non blinds
-    for z in newGame.player_list[2:]:
-        z.preflop_decision()
+        # Makes a preflop decision for non blinds
+        for z in newGame.player_list[2:]:
+            z.preflop_decision()
 
-    # Flop
-    newGame.set_round("Flop", 3)
-    # Turn
-    newGame.set_round("Turn", 1)
-    # River
-    newGame.set_round("River", 1)
+        # Flop
+        newGame.set_round("Flop", 3)
+        # Turn
+        newGame.set_round("Turn", 1)
+        # River
+        newGame.set_round("River", 1)
 
-    # Showdown
-    newGame.showdown()
+        # Showdown
+        newGame.showdown()
 
-    # Deletes game
-    del newGame
+        # Deletes game
+        del newGame
+
+    # To handle any unforeseen errors
+    except Exception as e:
+        print(f"An error occurred: {e}, {type(e)}")
 
 print("\nSimulation is complete! Your data can be found in RESULTS.csv.")
 sleep(600)
