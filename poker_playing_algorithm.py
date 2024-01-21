@@ -482,6 +482,7 @@ for x in range(num_of_games):
     # To handle any unforeseen errors
     except Exception as e:
         print(f"An error occurred: {e}, {type(e)}")
+        sleep(600)
 
 print("\nSimulation is complete! Your data can be found in RESULTS.csv.")
 sleep(600)
