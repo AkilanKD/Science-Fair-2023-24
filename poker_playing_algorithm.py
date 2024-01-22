@@ -132,7 +132,7 @@ class AI:
         # Increases position depending on preflop aggression
         self.position += self.preflop
 
-        if hand_position == "N" or hand_position < self.position:
+        if hand_position == "N" or hand_position > self.position:
             # Calls if no one else bet (outside of blinds) and the AI is last
             if self.position == len(self.game.ai_list):
                 self.bet(self.game.highest_bet)
