@@ -7,3 +7,5 @@ Thanks to @HenryRLee for the library PH Evaluator. Source code can be found here
 Thanks to @elleklinton for the library Pied Poker. Source code can be found here: https://github.com/elleklinton/PiedPoker.
 
 Thanks to John La Rooy from Stack Overflow for his line of code to sort 2D arrays based on a specific column: https://stackoverflow.com/a/4174955.
+
+Thanks to Match Poker Online for their preflop hand cart, which PREFLOP-RANGES.csv is based on: https://matchpoker.com/learn/strategy-guides/pre-flop-ranges-8-max.
